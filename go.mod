@@ -1,4 +1,4 @@
-module github.com/wombatlord/lastplayerontheleft
+module github.com/wombatlord/last-player-on-the-left
 
 go 1.17
 
