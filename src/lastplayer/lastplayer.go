@@ -15,7 +15,8 @@ import (
 	// "github.com/gdamore/tcell"
 )
 
-type AudioPanel struct {
+// Contains properties for manipulating an audio stream & drawing info to the terminal. eg. volume / seeking & position
+type audioPanel struct {
 	sampleRate beep.SampleRate
 	streamer beep.Streamer
 	ctrl *beep.Ctrl
@@ -23,14 +24,16 @@ type AudioPanel struct {
 	volume *effects.Volume
 }
 
-func newAudioPanel(sampleRate beep.SampleRate, streamer beep.StreamSeeker) *AudioPanel {
+// Constructor function for the AudioPanel struct.
+func newAudioPanel(sampleRate beep.SampleRate, streamer beep.StreamSeeker) *audioPanel {
 	ctrl := &beep.Ctrl{Streamer: beep.Loop(-1, streamer)}
 	resampler := beep.ResampleRatio(4, 1, ctrl)
 	volume := &effects.Volume{Streamer: resampler, Base: 2}
-	return &AudioPanel{sampleRate, streamer, ctrl, resampler, volume}
+	return &audioPanel{sampleRate, streamer, ctrl, resampler, volume}
 }
 
-func (ap *AudioPanel) play() {
+// Plays the stream referenced by AudioPanel.streamer at the volume of AudioPanel.volume
+func (ap *audioPanel) play() {
 	speaker.Play(ap.volume)
 }
 
