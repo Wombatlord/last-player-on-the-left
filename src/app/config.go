@@ -1,47 +1,50 @@
 package app
 
 import (
-	"bufio"
 	"gopkg.in/yaml.v2"
 	"os"
 )
 
-type Subscription struct {
-	Url   string
-	Alias string
+type Config struct {
+	Path string
+	Subs map[string]string
 }
 
-type SubscriptionsConf struct {
-	file *os.File
-	Subs []Subscription
+func (s *Config) Include(alias string, url string) error {
+	s.Subs[alias] = url
+	if err := s.Save(); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (s *SubscriptionsConf) Include(alias string, url string) {
-	s.Subs = append(s.Subs, Subscription{Alias: alias, Url: url})
-}
-
-func (s *SubscriptionsConf) Save() error {
+func (s *Config) Save() error {
 	content, err := yaml.Marshal(s.Subs)
 	if err != nil {
 		return err
 	}
-	_, err = s.file.Write(content)
+	err = os.WriteFile(s.Path, content, 0644)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-var subs SubscriptionsConf
+var conf Config
 
-func LoadSubs(file *os.File) (*SubscriptionsConf, error) {
-	scanner := bufio.NewScanner(file)
-	scanner.Scan()
-	fileContent := scanner.Bytes()
-	err := yaml.Unmarshal(fileContent, subs.Subs)
+func LoadConfig(path string) (*Config, error) {
+	fileContent, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	conf.Subs = make(map[string]string)
+	conf.Path = path
+	err = yaml.Unmarshal(fileContent, conf.Subs)
 	if err != nil {
 		return nil, err
 	}
 
-	return &subs, nil
+	return &conf, nil
 }
+
+

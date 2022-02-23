@@ -85,7 +85,7 @@ func (RSSFeed *RSSFeed) EpisodeData(feed RSSFeed) {
 	}
 }
 
-// Prints the link for a single episode.
+// Returns the link for a single episode.
 func (RSSFeed *RSSFeed) EpisodeLink(feed RSSFeed, episodeNumber int) string {
 	episode := feed.Channel[0].Item[episodeNumber].Link
 	return episode
