@@ -1,17 +1,38 @@
 package lastplayer
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"time"
-	"fmt"
 
 	"github.com/faiface/beep"
+	"github.com/faiface/beep/effects"
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
+	// "github.com/gdamore/tcell"
 )
+
+type AudioPanel struct {
+	sampleRate beep.SampleRate
+	streamer beep.Streamer
+	ctrl *beep.Ctrl
+	resampler *beep.Resampler
+	volume *effects.Volume
+}
+
+func newAudioPanel(sampleRate beep.SampleRate, streamer beep.StreamSeeker) *AudioPanel {
+	ctrl := &beep.Ctrl{Streamer: beep.Loop(-1, streamer)}
+	resampler := beep.ResampleRatio(4, 1, ctrl)
+	volume := &effects.Volume{Streamer: resampler, Base: 2}
+	return &AudioPanel{sampleRate, streamer, ctrl, resampler, volume}
+}
+
+func (ap *AudioPanel) play() {
+	speaker.Play(ap.volume)
+}
 
 // Bare minimum HTTP request function to get an audio stream.
 // io.ReadCloser is the interface required by mp3.Decode in StreamAudio()
@@ -66,10 +87,16 @@ func StreamAudio(source string, audioSource string) {
 
 		speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 
-		done := make(chan bool)
-		speaker.Play(beep.Seq(streamer, beep.Callback(func() {
-			done <- true
-		})))
-		<-done
+		ctrl := &beep.Ctrl{Streamer: beep.Loop(-1, streamer), Paused: false}
+		speaker.Play(ctrl)
+
+		for {
+			fmt.Print("Press [ENTER] to pause/resume. ")
+			fmt.Scanln()
+
+			speaker.Lock()
+			ctrl.Paused = !ctrl.Paused
+			speaker.Unlock()
+		}
 	}
 }
