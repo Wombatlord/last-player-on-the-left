@@ -26,19 +26,15 @@ type audioPanel struct {
 
 // Constructor function for the AudioPanel struct.
 func newAudioPanel(sampleRate beep.SampleRate, streamer beep.StreamSeeker) *audioPanel {
-	ctrl := &beep.Ctrl{Streamer: beep.Loop(-1, streamer)}
-	resampler := beep.ResampleRatio(4, 1, ctrl)
-	volume := &effects.Volume{Streamer: streamer, Base: 2, Volume: -5}
+	ctrl := &beep.Ctrl{Streamer: beep.Loop(-1, streamer)} // used for pausing
+	resampler := beep.ResampleRatio(4, 1, ctrl)	// can change playback speed.
+	volume := &effects.Volume{Streamer: streamer, Base: 2, Volume: 0} // Volume: -0.1 to 5 tested range. 0 is system volume.
 	return &audioPanel{sampleRate, streamer, ctrl, resampler, volume}
 }
 
 // Plays the stream referenced by AudioPanel.streamer at the volume of AudioPanel.volume
 func (ap *audioPanel) play() {
-	done := make(chan bool)
-		speaker.Play(beep.Seq(ap.volume, beep.Callback(func() {
-			done <- true
-		})))
-		<-done
+	speaker.Play(ap.volume)
 }
 
 // Bare minimum HTTP request function to get an audio stream.
@@ -97,5 +93,13 @@ func StreamAudio(source string, audioSource string) {
 		ap := newAudioPanel(format.SampleRate, streamer)
 		
 		ap.play()
+		seconds := time.Tick(time.Second)
+		
+		for {
+			select {
+			case <- seconds:
+				fmt.Println("playing")
+			}
+		}
 	}
 }
