@@ -6,6 +6,9 @@ No external media player (vlc, mpv) required!
 - Stream episodes from subscribed feeds.
 - Play local audio files.
 
+## Installation
+To build from source, clone the repo and run `go build` in the project root.
+
 ## Usage
 
 #### Subscribing to a feed
@@ -16,18 +19,18 @@ Aliases can then be used from the command line in combination with flags, eg. `-
 
 Alias is a user provided name for a given podcast.
 
-`$go run main.go $ALIAS -s $URL`
+`./last-player-on-the-left.exe $ALIAS -s $URL`
 
 The following will subscribe to Last Podcast On The Left, associating the alias LPOTL to the feed and saving this information in config.yaml.
 
-`$go run main.go LPOTL -s https://feeds.simplecast.com/dCXMIpJz`
+`./last-player-on-the-left.exe LPOTL -s https://feeds.simplecast.com/dCXMIpJz`
 
 #### Play the latest episode
 Grabs the feed associated to the given alias from the subscription list and begins playing the latest episode in the feed, direct from the command line.
 
-`$go run main.go $ALIAS -l`
+`./last-player-on-the-left.exe $ALIAS -l`
 
 #### Play a specific episode
 Episodes are indexed from the latest episode to the first episode in a feed. Pass a number greater than 0 to play a specific episode, working back from the latest.
 
-`$go run main.go -e 1` plays the episode before the latest episode.
+`./last-player-on-the-left.exe LPOTL -e 1` plays the episode before the latest episode.
