@@ -116,21 +116,3 @@ func (client *ClientStreamer) Seek(p int) error {
 	client.currentStreamer = client.Buff.Streamer(0, client.Buff.Len())
 	return client.currentStreamer.Seek(p)
 }
-
-//// StreamSeeker is a finite duration Streamer which supports seeking to an arbitrary position.
-//type StreamSeeker interface {
-//Streamer
-
-// Duration returns the total number of samples of the Streamer.
-//	Len() int
-
-// Position returns the current position of the Streamer. This value is between 0 and the
-// total length.
-//	Position() int
-
-// Seek sets the position of the Streamer to the provided value.
-//
-// If an error occurs during seeking, the position remains unchanged. This error will not be
-// returned through the Streamer's Err method.
-//	Seek(p int) error
-//}
