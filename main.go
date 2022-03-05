@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/wombatlord/last-player-on-the-left/src/app"
 
 	"github.com/alexflint/go-arg"
@@ -12,6 +14,7 @@ var args struct {
 	Alias     string `arg:"positional" help:"The RSS feed alias"`
 	Subscription string `arg:"-s, --subscribe" help:"Supply a URL to the feed to create a subscription with the provided alias"`
 	Latest bool `arg:"-l, --latest" help:"Play the latest episode associated to the alias"`
+	Episode int `arg:"-e, --episode" help:"Play a specific episode. 0 is the latest episode."`
 }
 
 var (
@@ -21,6 +24,15 @@ var (
 
 func playAudio(url string) {
 	lastplayer.StreamAudio("stream", url)
+}
+
+func playLatest() {
+	// Get the url for the latest episode in the feed.
+	latest := feed.Channel[0].Item[0]
+	streamUrl := latest.Enclosure.Url
+	
+	// do the latest noises
+	playAudio(streamUrl)
 }
 
 func main() {
@@ -49,12 +61,18 @@ func main() {
 	}
 	
 	if args.Latest {
-		// Get the url for the latest episode in the feed.
-		latest := feed.Channel[0].Item[0]
-		streamUrl := latest.Enclosure.Url
-		
-		// do the noises
+		playLatest()
+	}
+
+	if args.Episode != 0 {
+		// Get the url for the requested episode in the feed.
+		episode := feed.Channel[0].Item[args.Episode]
+		streamUrl := episode.Enclosure.Url
+
+		// do the specific noises
 		playAudio(streamUrl)
+	} else {
+		fmt.Println("Please provide an episode number 1 or greater.\n 0 is the latest episode, use -l")
 	}
 }
 
