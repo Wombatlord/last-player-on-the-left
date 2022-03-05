@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"github.com/alexflint/go-arg"
 	"github.com/wombatlord/last-player-on-the-left/src/app"
 	"github.com/wombatlord/last-player-on-the-left/src/clients"
 	"github.com/wombatlord/last-player-on-the-left/src/lastplayer"
+	"log"
 )
 
 var args struct {
@@ -16,7 +18,8 @@ var args struct {
 
 var (
 	// url  = os.Args[1]
-	feed *clients.RSSFeed
+	feed   *clients.RSSFeed
+	logger chan string
 )
 
 func playAudio(url string) {
@@ -24,6 +27,14 @@ func playAudio(url string) {
 }
 
 func main() {
+	// Create the logger
+	logger = app.GetLogChan("main")
+	defer close(logger)
+
+	// Parse the args
+	arg.MustParse(&args)
+	logger <- fmt.Sprintf("Args parsed: %+v", args)
+
 	// Load the config file
 	conf, err := app.LoadConfig("config.yaml")
 	fatal(err)
@@ -31,14 +42,11 @@ func main() {
 	// If no episode arg is provided, set value to -1 to prevent 0 value instantiation.
 	args.Episode = -1
 
-	// Parse the args
-	arg.MustParse(&args)
-	
 	// Pull the feed
 	if args.Subscription != "" {
 		feed, err = clients.GetContent(args.Subscription)
 	} else {
-		feed, err = clients.GetContent(conf.Subs[args.Alias])
+		feed, err = clients.GetContent(conf.Config.Subs[args.Alias])
 	}
 	fatal(err)
 
@@ -72,7 +80,6 @@ func main() {
 
 func fatal(err error) {
 	if err != nil {
-		panic(err)
-		// log.Fatalf("error: %v", err)
+		log.Fatalf("error: %v", err)
 	}
 }

@@ -1,67 +1,58 @@
 package app
 
 import (
-	"fmt"
+	"log"
 	"os"
-	"time"
 )
 
 type Logger struct {
-	logChan       chan string
-	file *os.File
+	logChan chan string
+	name    string
 }
 
 var (
 	loggers map[string]*Logger
+	config  *ConfigFile
+	err     error
 )
 
-func makeLogger(logChan chan string, file *os.File) *Logger {
-	return &Logger{logChan: logChan, file: file}
+func makeLogger(logChan chan string, loggerName string) *Logger {
+	return &Logger{logChan: logChan, name: loggerName}
 }
 
 func (logger *Logger) listen() {
-	defer logger.file.Close()
 	for {
 		select {
-		case log := <-logger.logChan:
-			fmt.Fprintf(logger.file, "[%s]: MESSAGE: %s\n", time.Now().Format(time.RFC3339), log)
+		case logString := <-logger.logChan:
+			log.Printf("[%s] MESSAGE: %s", logger.name, logString)
 		}
-	}	
+	}
 }
 
-func GetLogChan(loggerName, path string) (chan string, error) {
-	
-	fileInfo, err := os.Stat(path)
-
-	if err == nil {
-		if fileInfo.IsDir() {
-			return nil, fmt.Errorf("the path provided is a directory: %s", path)
-		}
-	}
-	
-	logFile, err := os.Create(path)
-	
+func GetLogChan(loggerName string) chan string {
+	config, err = LoadConfig("config.yaml")
 	if err != nil {
-		fmt.Println("Create")
-		return nil, err
+		log.Fatal(err)
 	}
-	
-	if _, err := logFile.WriteString("Logging Online!"); err != nil {
-		fmt.Println("WriteString")
-		return nil, err
+	logFile, err := os.OpenFile(config.Config.Logs, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	log.SetOutput(logFile)
 
 	if loggers == nil {
 		loggers = make(map[string]*Logger)
 	}
 	if logger, ok := loggers[loggerName]; ok {
-		return logger.logChan, nil
+		return logger.logChan
 	} else {
 		logChan := make(chan string, 32)
-		logger = makeLogger(logChan, logFile)
+		logger = makeLogger(logChan, loggerName)
 		loggers[loggerName] = logger
 
-		go func () {logger.listen()}()
-		return logger.logChan, nil
+		go func() { logger.listen() }()
+		logChan <- "Logging Connected!"
+		return logger.logChan
 	}
 }

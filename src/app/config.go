@@ -6,20 +6,28 @@ import (
 )
 
 type Config struct {
-	Path string
-	Subs map[string]string
+	Subs map[string]string `yaml:"subs"`
+	Logs string            `yaml:"logs"`
 }
 
-func (s *Config) Include(alias string, url string) error {
-	s.Subs[alias] = url
+type ConfigFile struct {
+	Path   string
+	Config Config
+}
+
+func (s *ConfigFile) Include(alias string, url string) error {
+	if s.Config.Subs == nil {
+		s.Config.Subs = make(map[string]string)
+	}
+	s.Config.Subs[alias] = url
 	if err := s.Save(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *Config) Save() error {
-	content, err := yaml.Marshal(s.Subs)
+func (s *ConfigFile) Save() error {
+	content, err := yaml.Marshal(s.Config)
 	if err != nil {
 		return err
 	}
@@ -30,21 +38,20 @@ func (s *Config) Save() error {
 	return nil
 }
 
-var conf Config
+var conf ConfigFile
+var confVals Config
 
-func LoadConfig(path string) (*Config, error) {
+func LoadConfig(path string) (*ConfigFile, error) {
 	fileContent, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	conf.Subs = make(map[string]string)
 	conf.Path = path
-	err = yaml.Unmarshal(fileContent, conf.Subs)
+	err = yaml.Unmarshal(fileContent, &confVals)
+	conf.Config = confVals
 	if err != nil {
 		return nil, err
 	}
 
 	return &conf, nil
 }
-
-
