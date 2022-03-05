@@ -1,4 +1,5 @@
 .idea/
+.obsidian/
 samples/
 subscription.yaml
 logs/log.txt
