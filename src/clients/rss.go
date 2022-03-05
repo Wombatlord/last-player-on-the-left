@@ -1,4 +1,4 @@
-package RSS
+ package clients
 
 import (
 	"encoding/xml"
@@ -17,7 +17,7 @@ type Enclosure struct {
 	Type   string `xml:"type,attr"`
 }
 
-// Defining Structs to parse RSS Feed xml from HTTP request.
+// Defining Structs to parse clients Feed xml from HTTP request.
 // The full feed including header.
 type RSSFeed struct {
 	XMLName xml.Name `xml:"rss"`
@@ -46,7 +46,7 @@ type Item struct {
 	Enclosure Enclosure `xml:"enclosure"`
 }
 
-// Retrieve an RSS Feed via HTTP Request.
+// Retrieve an clients Feed via HTTP Request.
 // Parse the xml in the response into structs.
 // Exit & Print in the event of an error.
 func GetContent(url string) (*RSSFeed, error) {

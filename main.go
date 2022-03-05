@@ -1,13 +1,11 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/wombatlord/last-player-on-the-left/src/app"
 
 	"github.com/alexflint/go-arg"
+	"github.com/wombatlord/last-player-on-the-left/src/clients"
 	"github.com/wombatlord/last-player-on-the-left/src/lastplayer"
-	"github.com/wombatlord/last-player-on-the-left/src/rss"
 )
 
 var args struct {
@@ -18,7 +16,7 @@ var args struct {
 
 var (
 	// url  = os.Args[1]
-	feed *RSS.RSSFeed
+	feed *clients.RSSFeed
 )
 
 func playAudio(url string) {
@@ -35,9 +33,9 @@ func main() {
 
 	// Pull the feed
 	if args.Subscription != "" {
-		feed, err = RSS.GetContent(args.Subscription)
+		feed, err = clients.GetContent(args.Subscription)
 	} else {
-		feed, err = RSS.GetContent(conf.Subs[args.Alias])
+		feed, err = clients.GetContent(conf.Subs[args.Alias])
 	}
 	fatal(err)
 	
@@ -51,10 +49,9 @@ func main() {
 	}
 	
 	if args.Latest {
-		// Play the latest episode in the feed.
+		// Get the url for the latest episode in the feed.
 		latest := feed.Channel[0].Item[0]
 		streamUrl := latest.Enclosure.Url
-		fmt.Printf("URL ===> %s\n\n\n\nTITLE 8===D %s", streamUrl, latest.Title)
 		
 		// do the noises
 		playAudio(streamUrl)
