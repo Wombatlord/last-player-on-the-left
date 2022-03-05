@@ -2,8 +2,11 @@ package app
 
 import (
 	"gopkg.in/yaml.v2"
+	"log"
 	"os"
 )
+
+const DefaultConfig = "src/app/default_config.yaml"
 
 type Config struct {
 	Subs map[string]string `yaml:"subs"`
@@ -44,7 +47,10 @@ var confVals Config
 func LoadConfig(path string) (*ConfigFile, error) {
 	fileContent, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		fileContent, err = os.ReadFile(DefaultConfig)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 	conf.Path = path
 	err = yaml.Unmarshal(fileContent, &confVals)

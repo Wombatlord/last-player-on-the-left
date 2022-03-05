@@ -46,7 +46,11 @@ func main() {
 	if args.Subscription != "" {
 		feed, err = clients.GetContent(args.Subscription)
 	} else {
-		feed, err = clients.GetContent(conf.Config.Subs[args.Alias])
+		url := conf.Config.Subs[args.Alias]
+		if url == "" {
+			fmt.Printf("You have no subscription for the alias %s\n", args.Alias)
+		}
+		feed, err = clients.GetContent(url)
 	}
 	fatal(err)
 
