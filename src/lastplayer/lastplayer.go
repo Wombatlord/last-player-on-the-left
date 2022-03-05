@@ -189,7 +189,7 @@ func (ap *audioPanel) handle(eventInstance tcell.Event) (changed, quit bool) {
 // audioRequest() provides the io.ReadCloser from a HTTP Response body for streaming from a link.
 func StreamAudio(source string, audioSource string) {
 	var err error
-	if logger, err = app.GetLogChan("last", "./log.txt"); err != nil {
+	if logger, err = app.GetLogChan("last", "./logs/log.txt"); err != nil {
 		panic(err)
 	}
 	defer close(logger)

@@ -30,27 +30,24 @@ func (logger *Logger) listen() {
 }
 
 func GetLogChan(loggerName, path string) (chan string, error) {
-
+	
 	fileInfo, err := os.Stat(path)
-	if err != nil {
-		return nil, err
-	}
 
-	if fileInfo.IsDir() {
-		return nil, fmt.Errorf("the path provided is a directory: %s", path)
+	if err == nil {
+		if fileInfo.IsDir() {
+			return nil, fmt.Errorf("the path provided is a directory: %s", path)
+		}
 	}
 	
-	logFile, err := os.OpenFile(
-		path,
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 
-		0644,
-	)
+	logFile, err := os.Create(path)
 	
 	if err != nil {
+		fmt.Println("Create")
 		return nil, err
 	}
 	
 	if _, err := logFile.WriteString("Logging Online!"); err != nil {
+		fmt.Println("WriteString")
 		return nil, err
 	}
 
