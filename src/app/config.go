@@ -1,47 +1,63 @@
 package app
 
 import (
-	"bufio"
 	"gopkg.in/yaml.v2"
+	"log"
 	"os"
 )
 
-type Subscription struct {
-	Url   string
-	Alias string
+const DefaultConfig = "src/app/default_config.yaml"
+
+type Config struct {
+	Subs map[string]string `yaml:"subs"`
+	Logs string            `yaml:"logs"`
 }
 
-type SubscriptionsConf struct {
-	file *os.File
-	Subs []Subscription
+type ConfigFile struct {
+	Path   string
+	Config Config
 }
 
-func (s *SubscriptionsConf) Include(alias string, url string) {
-	s.Subs = append(s.Subs, Subscription{Alias: alias, Url: url})
+func (s *ConfigFile) Include(alias string, url string) error {
+	if s.Config.Subs == nil {
+		s.Config.Subs = make(map[string]string)
+	}
+	s.Config.Subs[alias] = url
+	if err := s.Save(); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (s *SubscriptionsConf) Save() error {
-	content, err := yaml.Marshal(s.Subs)
+func (s *ConfigFile) Save() error {
+	content, err := yaml.Marshal(s.Config)
 	if err != nil {
 		return err
 	}
-	_, err = s.file.Write(content)
+	err = os.WriteFile(s.Path, content, 0644)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-var subs SubscriptionsConf
+var conf ConfigFile
+var confVals Config
 
-func LoadSubs(file *os.File) (*SubscriptionsConf, error) {
-	scanner := bufio.NewScanner(file)
-	scanner.Scan()
-	fileContent := scanner.Bytes()
-	err := yaml.Unmarshal(fileContent, subs.Subs)
+func LoadConfig(path string) (*ConfigFile, error) {
+	fileContent, err := os.ReadFile(path)
+	if err != nil {
+		fileContent, err = os.ReadFile(DefaultConfig)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	conf.Path = path
+	err = yaml.Unmarshal(fileContent, &confVals)
+	conf.Config = confVals
 	if err != nil {
 		return nil, err
 	}
 
-	return &subs, nil
+	return &conf, nil
 }

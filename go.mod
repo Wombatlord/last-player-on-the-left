@@ -12,10 +12,11 @@ require (
 require (
 	github.com/alexflint/go-scalar v1.1.0 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
+	github.com/gdamore/tcell v1.4.0 // indirect
 	github.com/hajimehoshi/go-mp3 v0.3.0 // indirect
 	github.com/hajimehoshi/oto v0.7.1 // indirect
 	github.com/lucasb-eyer/go-colorful v1.0.3 // indirect
-	github.com/mattn/go-runewidth v0.0.10 // indirect
+	github.com/mattn/go-runewidth v0.0.7 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.1.0 // indirect
 	golang.org/x/exp v0.0.0-20190306152737-a1d7652674e8 // indirect
