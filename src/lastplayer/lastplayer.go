@@ -14,6 +14,7 @@ import (
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
 	"github.com/gdamore/tcell"
+	"github.com/wombatlord/last-player-on-the-left/src/app"
 	"github.com/wombatlord/last-player-on-the-left/src/clients"
 )
 
@@ -24,6 +25,8 @@ func drawTextLine(screen tcell.Screen, x, y int, s string, style tcell.Style) {
 		x++
 	}
 }
+
+var logger chan string
 
 // Contains properties for manipulating an audio stream & drawing info to the terminal. eg. volume / seeking & position
 type audioPanel struct {
@@ -110,9 +113,10 @@ func (ap *audioPanel) draw(screen tcell.Screen) {
 }
 
 // Event handling
-func (ap *audioPanel) handle(event tcell.Event) (changed, quit bool) {
-	switch event := event.(type) {
+func (ap *audioPanel) handle(eventInstance tcell.Event) (changed, quit bool) {
+	switch event := eventInstance.(type) {
 	case *tcell.EventKey:
+		logger<- fmt.Sprintf("Key Pressed: %T, rune: %s", eventInstance, string(event.Rune()))
 		if event.Key() == tcell.KeyESC {
 			return false, true
 		}
@@ -131,14 +135,10 @@ func (ap *audioPanel) handle(event tcell.Event) (changed, quit bool) {
 		case 'q', 'w':
 			speaker.Lock()
 			newPos := ap.streamer.Position()
-			ap.debug += fmt.Sprintf("initial: %d\n", newPos)
-			ap.debug += fmt.Sprintf("len: %d\n", ap.streamer.Len())
 			if event.Rune() == 'q' {
-				ap.debug += "q, "
 				newPos -= ap.sampleRate.N(time.Second)
 			}
 			if event.Rune() == 'w' {
-				ap.debug += "w, "
 				newPos += ap.sampleRate.N(time.Second)
 			}
 			if newPos < 0 {
@@ -147,8 +147,6 @@ func (ap *audioPanel) handle(event tcell.Event) (changed, quit bool) {
 			if newPos >= ap.streamer.Len() {
 				newPos = ap.streamer.Len() - 1
 			}
-
-			ap.debug += fmt.Sprintf("%d, \n", newPos)
 
 			if err := ap.streamer.Seek(newPos); err != nil {
 				fmt.Print(ap.debug)
@@ -190,6 +188,11 @@ func (ap *audioPanel) handle(event tcell.Event) (changed, quit bool) {
 // This is provided by os.Open() for local playback
 // audioRequest() provides the io.ReadCloser from a HTTP Response body for streaming from a link.
 func StreamAudio(source string, audioSource string) {
+	var err error
+	if logger, err = app.GetLogChan("last", "./log.txt"); err != nil {
+		panic(err)
+	}
+	defer close(logger)
 
 	switch source {
 	case "local":
