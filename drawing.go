@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/gdamore/tcell/v2"
 )
 
-func drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string) {
+func drawTextWrap(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string) {
 	row := y1
 	col := x1
 	for _, r := range []rune(text) {
@@ -25,59 +26,22 @@ func drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string
 	}
 }
 
-type Alignment bool
-
-const (
-	Vertical   Alignment = true
-	Horizontal           = false
-)
-
-type Box struct {
-	Percent int
-	Split   *[2]Box
-	Align   Alignment
+func drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string) {
+	row := y1
+	col := x1
+	for _, r := range []rune(text) {
+		s.SetContent(col, row, r, nil, style)
+		col++
+		if col >= x2 {
+			break
+		}
+		if row > y2 {
+			break
+		}
+	}
 }
 
-// ui is the display laid out like this:
-//
-//	+-------------------------------+
-//	|				|				|
-//	|				|				|
-//	|				|				|
-//	|				|				|
-//	+-------------------------------+
-//	| 								|
-//	+-------------------------------+
-//
-var ui = Box{
-	Percent: 100,
-	Align:   Horizontal,
-	Split: &[2]Box{
-		Box{
-			Percent: 80,
-			Align:   Vertical,
-			Split: &[2]Box{
-				Box{
-					Percent: 50,
-				},
-				Box{
-					Percent: 50,
-				},
-			},
-		},
-		Box{
-			Percent: 20,
-		},
-	},
-}
-
-var (
-	w       int
-	h       int
-	selecta int
-)
-
-func drawBox(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string) {
+func drawBox(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string, wrap bool) {
 	if y2 < y1 {
 		y1, y2 = y2, y1
 	}
@@ -110,8 +74,141 @@ func drawBox(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string)
 		s.SetContent(x2, y2, tcell.RuneLRCorner, nil, style)
 	}
 
-	drawText(s, x1+1, y1+1, x2-1, y2-1, style, text)
+	if wrap {
+		drawTextWrap(s, x1+1, y1+1, x2-1, y2-1, style, text)
+	} else {
+		drawText(s, x1+1, y1+1, x2-1, y2-1, style, text)
+	}
 }
+
+var screen tcell.Screen
+
+type Cursor struct {
+	X, Y int
+}
+
+// StyledString represents a chunk of contiguous in-pane content
+// Including linebreaks
+type StyledString struct {
+	Text  string
+	Style tcell.Style
+}
+
+type Content []StyledString
+
+type Renderer interface {
+	Render(pane Pane) Content
+}
+
+type EventHandler interface {
+	HandleEvent(e *tcell.Event)
+}
+
+type TickHandler interface {
+	HandleTick(t time.Time)
+}
+
+type Widget interface {
+	EventHandler
+	TickHandler
+	Renderer
+}
+
+type NilWidget struct{ Widget }
+
+func (w *NilWidget) HandleEvent(e *tcell.Event) {}
+func (w *NilWidget) HandleTick(t time.Time)     {}
+func (w *NilWidget) Render(p Pane) Content {
+	return Content{}
+}
+
+type Pane struct {
+	Offset     Cursor
+	W, H       int
+	Content    Widget
+	Wrap       bool
+	UserCursor int
+}
+
+func newPane() *Pane {
+	width, height := screen.Size()
+	return &Pane{
+		Offset:  Cursor{0, 0},
+		W:       width,
+		H:       height,
+		Content: nil,
+		Wrap:    false,
+	}
+}
+
+func (p *Pane) Split(percent int, alignment Alignment) *Pane {
+	var (
+		newH   = p.H
+		newW   = p.W
+		childH = p.H
+		childW = p.W
+	)
+	if alignment == Horizontal {
+		newH = p.H * percent / 100
+		childH = p.H - newH
+	} else {
+		newW = p.W * percent / 100
+		childW = p.W - newW
+	}
+
+	var (
+		childOffset = Cursor{p.Offset.X, p.Offset.Y}
+	)
+	if alignment == Horizontal {
+		childOffset.Y += newH
+	} else {
+		childOffset.X += newW
+	}
+
+	return &Pane{childOffset, childW, childH, &NilWidget{}, p.Wrap, 0}
+}
+
+func (p Pane) Contains(c Cursor) bool {
+	hContains := c.X >= p.Offset.X && c.X < p.Offset.X+p.W
+	vContains := c.Y >= p.Offset.Y && c.Y < p.Offset.Y+p.H
+	return hContains && vContains
+}
+
+func (p Pane) Draw() {
+	render := p.Content.Render(p)[0].Text
+	drawBox(
+		screen,
+		p.Offset.X, p.Offset.Y,
+		p.Offset.X+p.W, p.Offset.Y+p.H,
+		tcell.StyleDefault,
+		render,
+		p.Wrap,
+	)
+}
+
+type UI []*Pane
+
+func makeUi() UI {
+	feedsPane := newPane()
+	statusPane := feedsPane.Split(80, Horizontal)
+	episodesPane := feedsPane.Split(33, Vertical)
+	detailsPane := episodesPane.Split(50, Vertical)
+
+	return []*Pane{feedsPane, episodesPane, detailsPane, statusPane}
+}
+
+type Alignment bool
+
+const (
+	Vertical   Alignment = true
+	Horizontal           = false
+)
+
+var (
+	w       int
+	h       int
+	selecta int
+)
 
 func RuneLines() [][]rune {
 	w, err := os.ReadFile("lorem.txt")
