@@ -23,10 +23,9 @@ func NewClient() *grab.Client {
 	return client
 }
 
-func (c *DownloadClient) CreateRequests(urls ...string) (reqs []*grab.Request) {
+func (c *DownloadClient) CreateRequests(urls []string) (reqs []*grab.Request) {
 	logger = app.GetLogChan(DownloaderLoggerName)
 	logger <- "Creating requests!"
-
 
 	for _, url := range urls {
 		req, err := grab.NewRequest(".", url)
@@ -45,12 +44,9 @@ func (c *DownloadClient) DownloadEpisode(client grab.Client, req *grab.Request) 
 	fmt.Printf("  %v\n", resp.HTTPResponse.Status)
 }
 
-func main() {
-	client := &DownloadClient{Client: NewClient()}
-
-	reqs := client.CreateRequests("urls", "f", "another")
-
-	for req := range reqs {
-		client.DownloadEpisode(*client.Client, reqs[req])
+func (c *DownloadClient) DownloadMulti(client grab.Client, requests ...*grab.Request) {
+	for _, request := range requests {
+		fmt.Printf("Downloading %v... \n", request.URL())
+		client.DoBatch(-1, request)
 	}
 }
