@@ -40,13 +40,18 @@ func (c *DownloadClient) CreateRequests(urls []string) (reqs []*grab.Request) {
 
 func (c *DownloadClient) DownloadEpisode(client grab.Client, req *grab.Request) {
 	fmt.Printf("Downloading %v... \n", req.URL())
-	resp := client.Do(req)
+	resp := c.Client.Do(req)
 	fmt.Printf("  %v\n", resp.HTTPResponse.Status)
 }
 
 func (c *DownloadClient) DownloadMulti(client grab.Client, requests ...*grab.Request) {
 	for _, request := range requests {
 		fmt.Printf("Downloading %v... \n", request.URL())
-		client.DoBatch(-1, request)
+		c.Client.DoBatch(-1, request)
+		logger <- request.HTTPRequest.Host
+		logger <- request.HTTPRequest.Method
+		logger <- c.Client.UserAgent
+		logger <- request.HTTPRequest.UserAgent()
+		logger <- request.Filename
 	}
 }
