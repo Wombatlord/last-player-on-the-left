@@ -9,13 +9,14 @@ import (
 
 const DownloaderLoggerName = "Downloader"
 
+var dlLogger chan string
 
 type DownloadClient struct {
 	Client *grab.Client
 }
 
 func NewClient() *grab.Client {
-	logger = app.GetLogChan(DownloaderLoggerName)
+	dlLogger = app.GetLogChan(DownloaderLoggerName)
 
 	// create a client
 	client := grab.NewClient()
@@ -27,13 +28,13 @@ func NewClient() *grab.Client {
 }
 
 func (c *DownloadClient) CreateRequests(urls []string) (reqs []*grab.Request) {
-	logger = app.GetLogChan(DownloaderLoggerName)
-	logger <- "Creating requests!"
+	dlLogger = app.GetLogChan(DownloaderLoggerName)
+	dlLogger <- "Creating requests!"
 
 	for _, url := range urls {
 		req, err := grab.NewRequest(".", url)
 		if err != nil {
-			logger <- fmt.Sprintf("request error:\n%v\n%v", req, err)
+			dlLogger <- fmt.Sprintf("request error:\n%v\n%v", req, err)
 		}
 		reqs = append(reqs, req)
 	}
@@ -48,30 +49,32 @@ func (c *DownloadClient) DownloadEpisode(client grab.Client, req *grab.Request) 
 }
 
 func (c *DownloadClient) DownloadMulti(client grab.Client, requests ...*grab.Request) {
-	logger = app.GetLogChan(DownloaderLoggerName)
+	dlLogger = app.GetLogChan(DownloaderLoggerName)
 	responses := c.Client.DoBatch(-1, requests...)
 
-	for elem := range responses {
-		logger <- elem.HTTPResponse.Request.Host
-		logger <- elem.Request.HTTPRequest.UserAgent()
-		logger <- elem.Filename
-		logger <- elem.HTTPResponse.Status
-	}
-	
+	go func() {
+		for elem := range responses {
+			dlLogger <- elem.HTTPResponse.Request.Host
+			dlLogger <- elem.Request.HTTPRequest.UserAgent()
+			dlLogger <- elem.Filename
+			dlLogger <- elem.HTTPResponse.Status
+		}
+	}()
+
 	// Only one log message currently being received
-	// logger <- responses.Err().Error()
-	// logger <- responses.HTTPResponse.Request.Host
-	// logger <- responses.Request.HTTPRequest.UserAgent()
-	// logger <- responses.Filename
-	// logger <- responses.HTTPResponse.Status
-	
+	// dlLogger <- responses.Err().Error()
+	// dlLogger <- responses.HTTPResponse.Request.Host
+	// dlLogger <- responses.Request.HTTPRequest.UserAgent()
+	// dlLogger <- responses.Filename
+	// dlLogger <- responses.HTTPResponse.Status
+
 	// for _, request := range requests {
 	// 	fmt.Printf("Downloading %v... \n", request.URL())
 	// 	c.Client.DoBatch(-1, request)
-	// 	logger <- request.HTTPRequest.Host
-	// 	logger <- request.HTTPRequest.Method
-	// 	logger <- c.Client.UserAgent
-	// 	logger <- request.HTTPRequest.UserAgent()
-	// 	logger <- request.Filename
+	// 	dlLogger <- request.HTTPRequest.Host
+	// 	dlLogger <- request.HTTPRequest.Method
+	// 	dlLogger <- c.Client.UserAgent
+	// 	dlLogger <- request.HTTPRequest.UserAgent()
+	// 	dlLogger <- request.Filename
 	// }
 }
