@@ -42,9 +42,9 @@ type audioPanel struct {
 func newAudioPanel(format beep.Format, streamer beep.StreamSeeker) *audioPanel {
 	logger <- "Building audio panel"
 	buffer := beep.NewBuffer(format)
-	ctrl := &beep.Ctrl{Streamer: beep.Loop(-1, streamer)}             // used for pausing
-	resampler := beep.ResampleRatio(4, 1, ctrl)                       // can change playback speed.
-	volume := &effects.Volume{Streamer: streamer, Base: 2, Volume: 0} // Volume: -0.1 to 5 tested range. 0 is system volume.
+	ctrl := &beep.Ctrl{Streamer: beep.Loop(-1, streamer)}         // used for pausing
+	resampler := beep.ResampleRatio(4, 1, ctrl)                   // can change playback speed.
+	volume := &effects.Volume{Streamer: ctrl, Base: 2, Volume: 0} // Volume: -0.1 to 5 tested range. 0 is system volume.
 
 	return &audioPanel{
 		buffer,
