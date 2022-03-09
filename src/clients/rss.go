@@ -10,9 +10,12 @@ import (
 
 const RssLoggerName = "RSS"
 
+type FeedCache map[string]*RSSFeed
+
 var (
-	feed   RSSFeed
-	logger chan string
+	feed      RSSFeed
+	logger    chan string
+	feedCache FeedCache = make(map[string]*RSSFeed)
 )
 
 type Enclosure struct {
@@ -50,30 +53,37 @@ type Item struct {
 	Enclosure   Enclosure `xml:"enclosure"`
 }
 
+func IsFeedCached() *FeedCache {
+	return &feedCache
+}
+
 // GetContent retrieves a clients Feed via HTTP Request.
 // Parse the xml in the response into structs.
 // Exit & Print in the event of an error.
 func GetContent(url string) (*RSSFeed, error) {
 	logger = app.GetLogChan(RssLoggerName)
 	logger <- fmt.Sprintf("Retrieving RSS Feed at: %s", url)
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, fmt.Errorf("GET error: %v", err)
+	if _, ok := feedCache[url]; !ok {
+		resp, err := http.Get(url)
+		if err != nil {
+			return nil, fmt.Errorf("GET error: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("status error: %v", resp.StatusCode)
+		}
+
+		data, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("read body: %v", err)
+		}
+
+		xml.Unmarshal(data, &feed)
+		feedCache[url] = &feed
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("status error: %v", resp.StatusCode)
-	}
-
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("read body: %v", err)
-	}
-
-	xml.Unmarshal(data, &feed)
-
-	return &feed, nil
+	return feedCache[url], nil
 }
 
 // EpisodeData iterates over Item structs within the Channel struct.

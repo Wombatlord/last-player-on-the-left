@@ -3,10 +3,14 @@ package main
 import (
 	"fmt"
 	"github.com/alexflint/go-arg"
+	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
 	"github.com/wombatlord/last-player-on-the-left/src/app"
 	"github.com/wombatlord/last-player-on-the-left/src/clients"
 	"github.com/wombatlord/last-player-on-the-left/src/lastplayer"
+	"github.com/wombatlord/last-player-on-the-left/src/view"
 	"log"
+	"os"
 )
 
 var args struct {
@@ -20,10 +24,72 @@ var (
 	// url  = os.Args[1]
 	feed   *clients.RSSFeed
 	logger chan string
+	conf   *app.ConfigFile
+	err    error
 )
 
 func playAudio(url string) {
 	lastplayer.StreamAudio("stream", url)
+}
+
+// FeedMenuItems returns the subbed RSS feeds
+func FeedMenuItems() (string, []view.MenuItem) {
+	subs := conf.Config.Subs
+	menuItems := make([]view.MenuItem, len(subs))
+	i := 0
+	for alias, url := range subs {
+		menuItems[i] = view.MenuItem{
+			Name: fmt.Sprintf("[ %s ] - %s", alias, url),
+			Desc: url,
+		}
+		i++
+	}
+	return "Feeds", menuItems
+}
+
+// EpisodeMenuItems returns the episodes within the selected feed
+func EpisodeMenuItems() (string, []view.MenuItem) {
+	state := view.State
+	if state == nil {
+		return "Episodes", []view.MenuItem{}
+	}
+	url := state.FeedUrl()
+	if url == "" {
+		return "Episodes", []view.MenuItem{}
+	}
+
+	feed, err = clients.GetContent(url)
+	fatal(err)
+
+	feedItems := feed.Channel[0].Item
+	menuItems := make([]view.MenuItem, len(feedItems))
+	for i, item := range feedItems {
+		menuItems[i] = view.MenuItem{
+			Name: fmt.Sprintf("%s - (%s)", item.Title, item.PubDate),
+			Desc: item.Enclosure.Url,
+		}
+	}
+	return "Episodes", menuItems
+}
+
+// ConfigureUI Sets up the actual content
+func ConfigureUI() {
+	logger = mainLogger()
+	logger <- "Configuring UI"
+
+	// Set Left Menu Content as aliases
+	view.LeftMenuProvider = FeedMenuItems
+	//view.LeftMenuProvider = func() (string, []view.MenuItem) { return "Episodes", []view.MenuItem{} }
+	logger <- "Left menu provider configured"
+
+	// Set right menu as episodes
+	view.RightMenuProvider = EpisodeMenuItems
+	//view.RightMenuProvider = func() (string, []view.MenuItem) { return "Episodes", []view.MenuItem{} }
+	logger <- "Right menu provider configured"
+}
+
+func mainLogger() chan string {
+	return app.GetLogChan("main")
 }
 
 func main() {
@@ -36,11 +102,27 @@ func main() {
 	logger <- fmt.Sprintf("Args parsed: %+v", args)
 
 	// Load the config file
-	conf, err := app.LoadConfig("config.yaml")
+	conf, err = app.LoadConfig("config.yaml")
 	fatal(err)
 
-	// If no episode arg is provided, set value to -1 to prevent 0 value instantiation.
-	args.Episode = -1
+	//  If no args are passed, start the UI
+	if len(os.Args) == 1 {
+		view.State = view.InitState(conf.Config, feed)
+		for _, val := range conf.Config.Subs {
+			feed, err = clients.GetContent(val)
+			fatal(err)
+			break
+		}
+
+		ConfigureUI()
+		guiApp := tview.NewApplication()
+		quitFn := view.AttachUI(guiApp)
+		defer quitFn()
+		view.State.Refresh()
+		guiApp.
+			guiApp.SetAfterDrawFunc(func(screen tcell.Screen) { view.State.Refresh() })
+		fatal(guiApp.Run())
+	}
 
 	// Pull the feed
 	if args.Subscription != "" {
@@ -54,6 +136,8 @@ func main() {
 	}
 	fatal(err)
 
+	// If no episode arg is provided, set value to -1 to prevent 0 value instantiation.
+	args.Episode = -1
 	// Prints data from the feed for sanity checking.
 	// feed.EpisodeData(*feed)
 
