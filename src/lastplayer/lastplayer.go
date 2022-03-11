@@ -259,7 +259,6 @@ func StreamAudio(source string, audioSource string) {
 		ap.play()
 
 		// partial prototyping to move away from beep.Seq(... func() {done <- true}) in ap.play()
-		seconds := time.Tick(time.Second)
 		events := make(chan tcell.Event)
 
 		go func() {
@@ -267,6 +266,9 @@ func StreamAudio(source string, audioSource string) {
 				events <- screen.PollEvent()
 			}
 		}()
+
+		t := time.NewTicker(time.Second)
+		defer t.Stop()
 
 	loop:
 		for {
@@ -282,7 +284,7 @@ func StreamAudio(source string, audioSource string) {
 					ap.draw(screen)
 					screen.Show()
 				}
-			case <-seconds:
+			case <-t.C:
 				screen.Clear()
 				ap.draw(screen)
 				screen.Show()
