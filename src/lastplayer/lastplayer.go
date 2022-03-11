@@ -42,9 +42,9 @@ type audioPanel struct {
 func newAudioPanel(format beep.Format, streamer beep.StreamSeeker) *audioPanel {
 	logger <- "Building audio panel"
 	buffer := beep.NewBuffer(format)
-	ctrl := &beep.Ctrl{Streamer: beep.Loop(-1, streamer)}             // used for pausing
-	resampler := beep.ResampleRatio(4, 1, ctrl)                       // can change playback speed.
-	volume := &effects.Volume{Streamer: streamer, Base: 2, Volume: 0} // Volume: -0.1 to 5 tested range. 0 is system volume.
+	ctrl := &beep.Ctrl{Streamer: beep.Loop(-1, streamer)}         // used for pausing
+	resampler := beep.ResampleRatio(4, 1, ctrl)                   // can change playback speed.
+	volume := &effects.Volume{Streamer: ctrl, Base: 2, Volume: 0} // Volume: -0.1 to 5 tested range. 0 is system volume.
 
 	return &audioPanel{
 		buffer,
@@ -259,7 +259,6 @@ func StreamAudio(source string, audioSource string) {
 		ap.play()
 
 		// partial prototyping to move away from beep.Seq(... func() {done <- true}) in ap.play()
-		seconds := time.Tick(time.Second)
 		events := make(chan tcell.Event)
 
 		go func() {
@@ -267,6 +266,9 @@ func StreamAudio(source string, audioSource string) {
 				events <- screen.PollEvent()
 			}
 		}()
+
+		t := time.NewTicker(time.Second)
+		defer t.Stop()
 
 	loop:
 		for {
@@ -282,7 +284,7 @@ func StreamAudio(source string, audioSource string) {
 					ap.draw(screen)
 					screen.Show()
 				}
-			case <-seconds:
+			case <-t.C:
 				screen.Clear()
 				ap.draw(screen)
 				screen.Show()
