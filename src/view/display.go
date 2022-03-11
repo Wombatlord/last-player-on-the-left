@@ -1,36 +1,49 @@
 package view
 
-import "github.com/rivo/tview"
+import (
+	"github.com/rivo/tview"
+)
 
-func Build() *tview.Application {
+type Controllers struct {
+	FeedMenu    *FeedsMenuController
+	EpisodeMenu *EpisodeMenuController
+}
+
+func Build(controllers Controllers) *tview.Application {
 	gui := tview.NewApplication()
-	gui.SetRoot(MainFlex(), true)
+	gui.SetRoot(MainFlex(controllers), true)
 	return gui
 }
 
-func MainFlex() *tview.Flex {
+func MainFlex(controllers Controllers) *tview.Flex {
 	mainFlex := tview.NewFlex()
-	mainFlex.AddItem(FeedColumn(), -1, 1, true)
-	mainFlex.AddItem(EpisodeMenu(), -1, 1, true)
+	mainFlex.AddItem(FeedColumn(controllers), -1, 1, true)
+	mainFlex.AddItem(EpisodeMenu(controllers), -1, 1, true)
 	return mainFlex
 }
 
-func FeedColumn() *tview.Flex {
+func FeedColumn(controllers Controllers) *tview.Flex {
 	feedColumnFlex := tview.NewFlex().SetDirection(tview.FlexRow)
-	feedColumnFlex.AddItem(FeedMenu(), -1, 5, true)
-	feedColumnFlex.AddItem(DebugPanel(), -1, 1, false)
+	feedColumnFlex.AddItem(FeedMenu(controllers), -1, 5, true)
+	feedColumnFlex.AddItem(DebugPanel(controllers), -1, 1, false)
 	return feedColumnFlex
 }
 
-func EpisodeMenu() *tview.List {
-	return tview.NewList()
+func EpisodeMenu(controllers Controllers) *tview.List {
+	episodeMenuView := tview.NewList()
+	episodeMenuView.SetBorder(true)
+	//Controllers.EpisodeMenu.Attach(episodeMenuView)
+	return episodeMenuView
 }
 
-func FeedMenu() *tview.List {
+func FeedMenu(controllers Controllers) *tview.List {
 	feedMenu := tview.NewList()
+	feedMenu.SetBorder(true)
+	//Controllers.FeedMenu.Attach(feedMenu)
 	return feedMenu
 }
 
-func DebugPanel() *tview.TextView {
-	return tview.NewTextView()
+func DebugPanel(controllers Controllers) *tview.TextView {
+	view := tview.NewTextView()
+	return view
 }

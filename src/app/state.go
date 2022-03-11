@@ -1,7 +1,5 @@
 package app
 
-import "github.com/wombatlord/last-player-on-the-left/src/view"
-
 type State struct {
 	FeedIndex    int
 	EpisodeIndex int
@@ -19,11 +17,15 @@ type StateManager struct {
 	pending []Transform
 }
 
-var notifyRegister []view.Controller
+var receivers []Receiver
+
+type Receiver interface {
+	Receive(s State)
+}
 
 // Register is used to connect a controller up for state update notifications
-func Register(controller view.Controller) view.Controller {
-	notifyRegister = append(notifyRegister, controller)
+func Register(controller Receiver) Receiver {
+	receivers = append(receivers, controller)
 	return controller
 }
 
@@ -65,7 +67,7 @@ func (s *StateManager) QueueTransform(transform Transform) {
 // Notify will prompt all controllers to check if they need to update and if so, they will queue
 // an update
 func Notify(s State) {
-	for _, receiver := range notifyRegister {
+	for _, receiver := range receivers {
 		receiver.Receive(s)
 	}
 }

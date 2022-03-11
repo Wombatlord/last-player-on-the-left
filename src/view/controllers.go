@@ -9,8 +9,8 @@ import (
 // Controller is the interface for views that are expressed
 // In terms of tview.Primitive implementations
 type Controller interface {
+	app.Receiver
 	InputHandler(event *tcell.EventKey) *tcell.EventKey
-	Receive(s app.State)
 }
 
 // MenuController must be implemented for any controller

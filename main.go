@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 	"github.com/alexflint/go-arg"
+	"github.com/rivo/tview"
 	"github.com/wombatlord/last-player-on-the-left/src/app"
 	"github.com/wombatlord/last-player-on-the-left/src/clients"
 	"github.com/wombatlord/last-player-on-the-left/src/lastplayer"
 	"github.com/wombatlord/last-player-on-the-left/src/view"
 	"log"
+	"os"
 )
 
 var args struct {
@@ -29,15 +31,17 @@ func playAudio(url string) {
 	lastplayer.StreamAudio("stream", url)
 }
 
-var controllers struct {
-	FeedMenu    view.Controller
-	EpisodeMenu view.Controller
-}
+var AppControllers view.Controllers
 
 // ConfigureUI Sets up the actual content
-func ConfigureUI() {
-	controllers.FeedMenu = app.Register(view.NewFeedsController())
-	controllers.EpisodeMenu = app.Register(view.NewEpisodeMenuController())
+func ConfigureUI() *tview.Application {
+	AppControllers.FeedMenu = view.NewFeedsController()
+	app.Register(AppControllers.FeedMenu)
+
+	AppControllers.EpisodeMenu = view.NewEpisodeMenuController()
+	app.Register(AppControllers.EpisodeMenu)
+
+	return view.Build(AppControllers)
 }
 
 func mainLogger() chan string {
@@ -56,6 +60,11 @@ func main() {
 	// Load the config file
 	conf, err = app.LoadConfig("config.yaml")
 	fatal(err)
+
+	if len(os.Args) == 1 {
+		gui := ConfigureUI()
+		log.Fatal(gui.Run())
+	}
 
 	// Pull the feed
 	if args.Subscription != "" {
