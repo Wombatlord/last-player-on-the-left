@@ -45,3 +45,10 @@ type FlexController interface {
 	Attach(view *tview.Flex)
 	View() *tview.Flex
 }
+
+// TextViewController is a Controller that can be attached to a tview.TextView
+type TextViewController interface {
+	Controller
+	Attach(view *tview.TextView)
+	View() *tview.TextView
+}

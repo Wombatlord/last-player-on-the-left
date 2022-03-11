@@ -1,6 +1,7 @@
 package view
 
 import (
+	"fmt"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/wombatlord/last-player-on-the-left/src/app"
@@ -12,10 +13,11 @@ type FeedsMenuController struct {
 	BaseMenuController
 	view      *tview.List
 	feedIndex int
+	logger    chan string
 }
 
 func NewFeedsController() *FeedsMenuController {
-	return &FeedsMenuController{}
+	return &FeedsMenuController{logger: app.GetLogChan("FeedsMenuController")}
 }
 
 func (f *FeedsMenuController) Attach(list *tview.List) {
@@ -33,8 +35,12 @@ func (f *FeedsMenuController) OnSelectionChange(
 	secondaryText string,
 	shortcut rune,
 ) {
+	f.feedIndex = index
+	//f.updateFeedIndex(index)
+}
+
+func (f *FeedsMenuController) updateFeedIndex(index int) {
 	manager := app.NewManager()
-	defer manager.Commit()
 
 	manager.QueueTransform(
 		func(state app.State) app.State {
@@ -42,9 +48,16 @@ func (f *FeedsMenuController) OnSelectionChange(
 			return state
 		},
 	)
+	manager.Commit()
 }
 
-func (f *FeedsMenuController) Receive(s app.State) {}
+func (f *FeedsMenuController) Receive(s app.State) {
+	f.logger <- fmt.Sprintf("Received state: %+v", s)
+}
+
 func (f *FeedsMenuController) InputHandler(event *tcell.EventKey) *tcell.EventKey {
+	if event.Key() == tcell.KeyEnter {
+		f.updateFeedIndex(f.view.GetCurrentItem())
+	}
 	return event
 }

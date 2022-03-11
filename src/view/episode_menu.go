@@ -1,6 +1,7 @@
 package view
 
 import (
+	"fmt"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/wombatlord/last-player-on-the-left/src/app"
@@ -12,10 +13,11 @@ type EpisodeMenuController struct {
 	feed      *clients.RSSFeed
 	feedIndex int
 	view      *tview.List
+	logger    chan string
 }
 
 func NewEpisodeMenuController() *EpisodeMenuController {
-	return &EpisodeMenuController{feedIndex: -1}
+	return &EpisodeMenuController{feedIndex: -1, logger: app.GetLogChan("EpisodeMenuController")}
 }
 
 func (e *EpisodeMenuController) Attach(list *tview.List) {
@@ -26,9 +28,9 @@ func (e *EpisodeMenuController) Attach(list *tview.List) {
 
 func (e *EpisodeMenuController) OnSelectionChange(
 	index int,
-	mainText string,
-	secondaryText string,
-	shortcut rune,
+	_ string,
+	_ string,
+	_ rune,
 ) {
 	manager := app.NewManager()
 	manager.QueueTransform(
@@ -43,6 +45,7 @@ func (e *EpisodeMenuController) OnSelectionChange(
 
 // Receive is looking out for changes to the feed index
 func (e *EpisodeMenuController) Receive(s app.State) {
+	e.logger <- fmt.Sprintf("Received state: %+v", s)
 	if e.feedIndex == -1 || e.feedIndex != s.FeedIndex {
 		e.feed, _ = clients.GetContent(app.LoadedConfig.Subs[s.FeedIndex].Url)
 		e.feedIndex = s.FeedIndex

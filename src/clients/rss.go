@@ -13,7 +13,6 @@ const RssLoggerName = "RSS"
 type FeedCache map[string]*RSSFeed
 
 var (
-	feed      RSSFeed
 	logger    chan string
 	feedCache FeedCache = make(map[string]*RSSFeed)
 )
@@ -63,7 +62,9 @@ func IsFeedCached() *FeedCache {
 func GetContent(url string) (*RSSFeed, error) {
 	logger = app.GetLogChan(RssLoggerName)
 	logger <- fmt.Sprintf("Retrieving RSS Feed at: %s", url)
-	if _, ok := feedCache[url]; !ok {
+	if feed, ok := feedCache[url]; !ok {
+		logger <- "Cache Miss"
+		feed = &RSSFeed{}
 		resp, err := http.Get(url)
 		if err != nil {
 			return nil, fmt.Errorf("GET error: %v", err)
@@ -79,8 +80,13 @@ func GetContent(url string) (*RSSFeed, error) {
 			return nil, fmt.Errorf("read body: %v", err)
 		}
 
-		xml.Unmarshal(data, &feed)
-		feedCache[url] = &feed
+		err = xml.Unmarshal(data, feed)
+		if err != nil {
+			logger <- fmt.Sprintf("ERROR: %s", err.Error())
+		}
+		feedCache[url] = feed
+	} else {
+		logger <- "Cache Hit"
 	}
 
 	return feedCache[url], nil

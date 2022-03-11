@@ -62,8 +62,7 @@ func main() {
 	fatal(err)
 
 	if len(os.Args) == 1 {
-		gui := ConfigureUI()
-		log.Fatal(gui.Run())
+		log.Fatal(ConfigureUI().Run())
 	}
 
 	// Pull the feed
