@@ -9,41 +9,52 @@ type Controllers struct {
 	EpisodeMenu *EpisodeMenuController
 }
 
+// Build returns the tview app
 func Build(controllers Controllers) *tview.Application {
 	gui := tview.NewApplication()
-	gui.SetRoot(MainFlex(controllers), true)
+	mainFlex := MainFlex()
+	feedColumn := FeedColumn()
+	episodeMenu := EpisodeMenu(controllers)
+	feedMenu := FeedMenu(controllers)
+	debugPanel := DebugPanel()
+
+	feedColumn.AddItem(feedMenu, -1, 5, true)
+	feedColumn.AddItem(debugPanel, -1, 1, false)
+
+	mainFlex.AddItem(feedColumn, -1, 1, true)
+	mainFlex.AddItem(episodeMenu, -1, 1, true)
+
+	gui.SetRoot(mainFlex, true)
 	return gui
 }
 
-func MainFlex(controllers Controllers) *tview.Flex {
+func MainFlex() *tview.Flex {
 	mainFlex := tview.NewFlex()
-	mainFlex.AddItem(FeedColumn(controllers), -1, 1, true)
-	mainFlex.AddItem(EpisodeMenu(controllers), -1, 1, true)
 	return mainFlex
 }
 
-func FeedColumn(controllers Controllers) *tview.Flex {
+func FeedColumn() *tview.Flex {
 	feedColumnFlex := tview.NewFlex().SetDirection(tview.FlexRow)
-	feedColumnFlex.AddItem(FeedMenu(controllers), -1, 5, true)
-	feedColumnFlex.AddItem(DebugPanel(controllers), -1, 1, false)
 	return feedColumnFlex
 }
 
 func EpisodeMenu(controllers Controllers) *tview.List {
 	episodeMenuView := tview.NewList()
+	controllers.EpisodeMenu.Attach(episodeMenuView)
+
 	episodeMenuView.SetBorder(true)
-	//Controllers.EpisodeMenu.Attach(episodeMenuView)
 	return episodeMenuView
 }
 
 func FeedMenu(controllers Controllers) *tview.List {
 	feedMenu := tview.NewList()
+	controllers.FeedMenu.Attach(feedMenu)
+
 	feedMenu.SetBorder(true)
-	//Controllers.FeedMenu.Attach(feedMenu)
 	return feedMenu
 }
 
-func DebugPanel(controllers Controllers) *tview.TextView {
+func DebugPanel() *tview.TextView {
 	view := tview.NewTextView()
 	return view
 }

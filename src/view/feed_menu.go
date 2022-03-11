@@ -10,12 +10,21 @@ import (
 // current feed with the feed selection in the ui
 type FeedsMenuController struct {
 	BaseMenuController
-	view         *tview.List
-	setFeedIndex app.Transform
+	view      *tview.List
+	feedIndex int
 }
 
 func NewFeedsController() *FeedsMenuController {
 	return &FeedsMenuController{}
+}
+
+func (f *FeedsMenuController) Attach(list *tview.List) {
+	list.SetChangedFunc(f.OnSelectionChange)
+	list.SetInputCapture(f.InputHandler)
+	for _, sub := range app.LoadedConfig.Subs {
+		list.AddItem(sub.Alias, sub.Url, 0, nil)
+	}
+	f.view = list
 }
 
 func (f *FeedsMenuController) OnSelectionChange(

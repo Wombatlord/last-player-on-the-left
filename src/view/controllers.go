@@ -35,12 +35,6 @@ type BaseMenuController struct {
 	view *tview.List
 }
 
-func (f *BaseMenuController) Attach(list *tview.List) {
-	list.SetChangedFunc(f.OnSelectionChange)
-	list.SetInputCapture(f.InputHandler)
-	f.view = list
-}
-
 func (f *BaseMenuController) View() *tview.List {
 	return f.view
 }

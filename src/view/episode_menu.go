@@ -18,6 +18,12 @@ func NewEpisodeMenuController() *EpisodeMenuController {
 	return &EpisodeMenuController{feedIndex: -1}
 }
 
+func (e *EpisodeMenuController) Attach(list *tview.List) {
+	list.SetChangedFunc(e.OnSelectionChange)
+	list.SetInputCapture(e.InputHandler)
+	e.view = list
+}
+
 func (e *EpisodeMenuController) OnSelectionChange(
 	index int,
 	mainText string,
