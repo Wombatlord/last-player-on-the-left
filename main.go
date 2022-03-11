@@ -17,10 +17,10 @@ var args struct {
 	Subscription string `arg:"-s, --subscribe" help:"Supply a URL to the feed to create a subscription with the provided alias"`
 	Latest       bool   `arg:"-l, --latest" help:"Play the latest episode associated to the alias"`
 	Episode      int    `arg:"-e, --episode" help:"Play a specific episode. 0 is the latest episode."`
+	Download     []int  `arg:"-d, --download" help:"Download episodes. 0 is the latest episode."`
 }
 
 var (
-	// url  = os.Args[1]
 	feed   *clients.RSSFeed
 	logger chan string
 	conf   *app.ConfigFile
@@ -109,6 +109,7 @@ func main() {
 
 func fatal(err error) {
 	if err != nil {
+		logger <- fmt.Sprintf("error: %v", err)
 		log.Fatalf("error: %v", err)
 	}
 }

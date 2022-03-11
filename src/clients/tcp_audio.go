@@ -31,6 +31,7 @@ func StreamDecode(audio io.ReadCloser) (*ClientStreamer, beep.Format, error) {
 	go func() {
 		buff.Append(streamer)
 		clientStreamer.quit = true
+		logger <- "Buffering goroutine complete"
 	}()
 
 	return clientStreamer, format, err
