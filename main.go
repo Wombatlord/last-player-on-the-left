@@ -3,14 +3,11 @@ package main
 import (
 	"fmt"
 	"github.com/alexflint/go-arg"
-	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
 	"github.com/wombatlord/last-player-on-the-left/src/app"
 	"github.com/wombatlord/last-player-on-the-left/src/clients"
 	"github.com/wombatlord/last-player-on-the-left/src/lastplayer"
 	"github.com/wombatlord/last-player-on-the-left/src/view"
 	"log"
-	"os"
 )
 
 var args struct {
@@ -32,60 +29,15 @@ func playAudio(url string) {
 	lastplayer.StreamAudio("stream", url)
 }
 
-// FeedMenuItems returns the subbed RSS feeds
-func FeedMenuItems() (string, []view.MenuItem) {
-	subs := conf.Config.Subs
-	menuItems := make([]view.MenuItem, len(subs))
-	i := 0
-	for alias, url := range subs {
-		menuItems[i] = view.MenuItem{
-			Name: fmt.Sprintf("[ %s ] - %s", alias, url),
-			Desc: url,
-		}
-		i++
-	}
-	return "Feeds", menuItems
-}
-
-// EpisodeMenuItems returns the episodes within the selected feed
-func EpisodeMenuItems() (string, []view.MenuItem) {
-	state := view.State
-	if state == nil {
-		return "Episodes", []view.MenuItem{}
-	}
-	url := state.FeedUrl()
-	if url == "" {
-		return "Episodes", []view.MenuItem{}
-	}
-
-	feed, err = clients.GetContent(url)
-	fatal(err)
-
-	feedItems := feed.Channel[0].Item
-	menuItems := make([]view.MenuItem, len(feedItems))
-	for i, item := range feedItems {
-		menuItems[i] = view.MenuItem{
-			Name: fmt.Sprintf("%s - (%s)", item.Title, item.PubDate),
-			Desc: item.Enclosure.Url,
-		}
-	}
-	return "Episodes", menuItems
+var controllers struct {
+	FeedMenu    view.Controller
+	EpisodeMenu view.Controller
 }
 
 // ConfigureUI Sets up the actual content
 func ConfigureUI() {
-	logger = mainLogger()
-	logger <- "Configuring UI"
-
-	// Set Left Menu Content as aliases
-	view.LeftMenuProvider = FeedMenuItems
-	//view.LeftMenuProvider = func() (string, []view.MenuItem) { return "Episodes", []view.MenuItem{} }
-	logger <- "Left menu provider configured"
-
-	// Set right menu as episodes
-	view.RightMenuProvider = EpisodeMenuItems
-	//view.RightMenuProvider = func() (string, []view.MenuItem) { return "Episodes", []view.MenuItem{} }
-	logger <- "Right menu provider configured"
+	controllers.FeedMenu = app.Register(view.NewFeedsController())
+	controllers.EpisodeMenu = app.Register(view.NewEpisodeMenuController())
 }
 
 func mainLogger() chan string {
@@ -105,34 +57,15 @@ func main() {
 	conf, err = app.LoadConfig("config.yaml")
 	fatal(err)
 
-	//  If no args are passed, start the UI
-	if len(os.Args) == 1 {
-		view.State = view.InitState(conf.Config, feed)
-		for _, val := range conf.Config.Subs {
-			feed, err = clients.GetContent(val)
-			fatal(err)
-			break
-		}
-
-		ConfigureUI()
-		guiApp := tview.NewApplication()
-		quitFn := view.AttachUI(guiApp)
-		defer quitFn()
-		view.State.Refresh()
-		guiApp.
-			guiApp.SetAfterDrawFunc(func(screen tcell.Screen) { view.State.Refresh() })
-		fatal(guiApp.Run())
-	}
-
 	// Pull the feed
 	if args.Subscription != "" {
 		feed, err = clients.GetContent(args.Subscription)
 	} else {
-		url := conf.Config.Subs[args.Alias]
-		if url == "" {
+		sub := conf.Config.GetByAlias(args.Alias)
+		if sub.Url == "" {
 			fmt.Printf("You have no subscription for the alias %s\n", args.Alias)
 		}
-		feed, err = clients.GetContent(url)
+		feed, err = clients.GetContent(sub.Url)
 	}
 	fatal(err)
 

@@ -112,11 +112,11 @@ func (ap *audioPanel) draw(screen tcell.Screen) {
 	drawTextLine(screen, 16, 7, speedStatus, statusStyle)
 }
 
-// Event handling
+// AppEvent handling
 func (ap *audioPanel) handle(eventInstance tcell.Event) (changed, quit bool) {
 	switch event := eventInstance.(type) {
 	case *tcell.EventKey:
-		logger <- fmt.Sprintf("Handling Event. Type: %T, Name: %s", eventInstance, event.Name())
+		logger <- fmt.Sprintf("Handling AppEvent. Type: %T, Name: %s", eventInstance, event.Name())
 		if event.Key() == tcell.KeyESC {
 			return false, true
 		}
