@@ -26,11 +26,16 @@ func drawTextLine(screen tcell.Screen, x, y int, s string, style tcell.Style) {
 	}
 }
 
-var logger chan string
+var (
+	panel  *AudioPanel = &AudioPanel{}
+)
+
+func getLogger() chan string {
+	return app.GetLogChan("lastplayer")
+}
 
 // Contains properties for manipulating an audio stream & drawing info to the terminal. eg. volume / seeking & position
-type audioPanel struct {
-	buffer     *beep.Buffer
+type AudioPanel struct {
 	sampleRate beep.SampleRate
 	streamer   beep.StreamSeeker
 	ctrl       *beep.Ctrl
@@ -39,28 +44,51 @@ type audioPanel struct {
 }
 
 // newAudioPanel is a constructor function for the AudioPanel struct.
-func NewAudioPanel(format beep.Format, streamer beep.StreamSeeker) *audioPanel {
-	logger <- "Building audio panel"
-	buffer := beep.NewBuffer(format)
-	ctrl := &beep.Ctrl{Streamer: beep.Loop(-1, streamer)}         // used for pausing
-	resampler := beep.ResampleRatio(4, 1, ctrl)                   // can change playback speed.
-	volume := &effects.Volume{Streamer: ctrl, Base: 2, Volume: 0} // Volume: -0.1 to 5 tested range. 0 is system volume.
+func NewAudioPanel(format beep.Format, streamer beep.StreamSeeker) *AudioPanel {
+	getLogger() <- "Building audio panel"
+	ap := &AudioPanel{}
+	ap.SetStreamer(format, streamer)
+	return ap
+}
 
-	return &audioPanel{
-		buffer,
-		format.SampleRate,
-		streamer,
-		ctrl,
-		resampler,
-		volume,
+// FetchAudioPanel will return the already initialised panel pointer.
+func FetchAudioPanel() *AudioPanel {
+	return panel
+}
+
+func (ap *AudioPanel) SetStreamer(format beep.Format, streamer beep.StreamSeeker) {
+	ap.ctrl = &beep.Ctrl{Streamer: beep.Loop(-1, streamer)}            // used for pausing
+	ap.resampler = beep.ResampleRatio(4, 1, ap.ctrl)                   // can change playback speed.
+	ap.volume = &effects.Volume{Streamer: ap.ctrl, Base: 2, Volume: 0} // Volume: -0.1 to 5 tested range. 0 is system volume
+}
+
+func (ap *AudioPanel) PlayFromUrl(url string) {
+	var err error
+	getLogger() <- "PlayFromUrl call"
+
+	audio, err := AudioRequest(url)
+	if err != nil {
+		log.Fatal(err)
 	}
+	
+	streamer, format, err := clients.StreamDecode(audio)
+	if err != nil {
+		log.Fatal(err)
+	}
+	ap.SetStreamer(format, streamer)
+
+	err = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
+	if err != nil {
+		log.Fatal(err)
+	}
+	ap.play()
 }
 
 // AudioRequest is the bare minimum HTTP request function to get an audio stream.
 // io.ReadCloser is the interface required by mp3.Decode in StreamAudio()
 // resp.Body is of this type so can simply be returned following the request.
 func AudioRequest(url string) (io.ReadCloser, error) {
-	logger <- fmt.Sprintf("Requesting streaming audio from %s", url)
+	getLogger() <- fmt.Sprintf("Requesting streaming audio from %s", url)
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("GET error: %v", err)
@@ -70,13 +98,13 @@ func AudioRequest(url string) (io.ReadCloser, error) {
 }
 
 // play Plays the stream referenced by AudioPanel.streamer at the volume of AudioPanel.volume
-func (ap *audioPanel) play() {
-	logger <- "Playing audio"
+func (ap *AudioPanel) play() {
+	getLogger() <- "Playing audio"
 	speaker.Play(ap.volume)
 }
 
 // Drawing
-func (ap *audioPanel) draw(screen tcell.Screen) {
+func (ap *AudioPanel) draw(screen tcell.Screen) {
 	mainStyle := tcell.StyleDefault.
 		Background(tcell.NewHexColor(0x473437)).
 		Foreground(tcell.NewHexColor(0xD7D8A2))
@@ -113,10 +141,10 @@ func (ap *audioPanel) draw(screen tcell.Screen) {
 }
 
 // AppEvent handling
-func (ap *audioPanel) handle(eventInstance tcell.Event) (changed, quit bool) {
+func (ap *AudioPanel) handle(eventInstance tcell.Event) (changed, quit bool) {
 	switch event := eventInstance.(type) {
 	case *tcell.EventKey:
-		logger <- fmt.Sprintf("Handling AppEvent. Type: %T, Name: %s", eventInstance, event.Name())
+		getLogger() <- fmt.Sprintf("Handling AppEvent. Type: %T, Name: %s", eventInstance, event.Name())
 		if event.Key() == tcell.KeyESC {
 			return false, true
 		}
@@ -182,53 +210,11 @@ func (ap *audioPanel) handle(eventInstance tcell.Event) (changed, quit bool) {
 	return false, false
 }
 
-
-func PlayFromUrl(url string) {
-	var err error
-	if logger = app.GetLogChan("lastplayer"); err != nil {
-		panic(err)
-	}
-	defer close(logger)
-
-	
-	audio, err := AudioRequest(url)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	streamer, format, err := clients.StreamDecode(audio)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer func(streamer *clients.ClientStreamer) {
-		err := streamer.Close()
-		if err != nil {
-			log.Fatal(err)
-		}
-	}(streamer)
-
-	err = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	ap := NewAudioPanel(format, streamer)
-
-	ap.play()
-}
-
-
 // StreamAudio is a proof of concept audio playback via tweaked Beep example code.
 // mp3.Decode requires an io.ReadCloser
 // This is provided by os.Open() for local playback
 // audioRequest() provides the io.ReadCloser from a HTTP Response body for streaming from a link.
 func StreamAudio(source string, audioSource string) {
-	var err error
-	if logger = app.GetLogChan("lastplayer"); err != nil {
-		panic(err)
-	}
-	defer close(logger)
-
 	switch source {
 	case "local":
 		audioLocal, err := os.Open(audioSource)
@@ -260,7 +246,7 @@ func StreamAudio(source string, audioSource string) {
 		if err != nil {
 			log.Fatal(err)
 		}
-
+		
 		streamer, format, err := clients.StreamDecode(audio)
 		if err != nil {
 			log.Fatal(err)
@@ -312,7 +298,7 @@ func StreamAudio(source string, audioSource string) {
 			case event := <-events:
 				changed, quit := ap.handle(event)
 				if quit {
-					logger <- "Exiting"
+					getLogger() <- "Exiting"
 					break loop
 				}
 				if changed {

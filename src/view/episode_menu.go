@@ -12,10 +12,10 @@ import (
 
 type EpisodeMenuController struct {
 	BaseMenuController
-	feed         *clients.RSSFeed
-	feedIndex    int
-	view         *tview.List
-	logger       chan string
+	feed      *clients.RSSFeed
+	feedIndex int
+	view      *tview.List
+	logger    chan string
 }
 
 func NewEpisodeMenuController() *EpisodeMenuController {
@@ -61,7 +61,7 @@ func (e *EpisodeMenuController) Receive(s app.State) {
 func (e *EpisodeMenuController) InputHandler(event *tcell.EventKey) *tcell.EventKey {
 	if event.Key() == tcell.KeyEnter {
 		episodeIndex := e.view.GetCurrentItem()
-		lastplayer.PlayFromUrl(e.feed.Channel[0].Item[episodeIndex].Enclosure.Url)
+		lastplayer.FetchAudioPanel().PlayFromUrl(e.feed.Channel[0].Item[episodeIndex].Enclosure.Url)
 		return nil
 	}
 
