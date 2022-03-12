@@ -43,6 +43,12 @@ type AudioPanel struct {
 	volume     *effects.Volume
 }
 
+func (ap *AudioPanel) PlayPause () {
+	speaker.Lock()
+	ap.ctrl.Paused = !ap.ctrl.Paused
+	speaker.Unlock()
+}
+
 // newAudioPanel is a constructor function for the AudioPanel struct.
 func NewAudioPanel(format beep.Format, streamer beep.StreamSeeker) *AudioPanel {
 	getLogger() <- "Building audio panel"

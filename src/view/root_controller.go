@@ -2,10 +2,12 @@ package view
 
 import (
 	"fmt"
+	"unicode"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/wombatlord/last-player-on-the-left/src/app"
+	"github.com/wombatlord/last-player-on-the-left/src/lastplayer"
 )
 
 type RootContoller struct {
@@ -66,6 +68,11 @@ func (r *RootContoller) InputHandler(event *tcell.EventKey) *tcell.EventKey {
 
 	if event.Key() == tcell.KeyLeft {
 		r.gui.SetFocus(r.focusRing[0])
+		return nil
+	}
+
+	if event.Key() == tcell.KeyPause || unicode.ToLower(event.Rune()) == 'p' {
+		lastplayer.FetchAudioPanel().PlayPause() 		
 		return nil
 	}
 
