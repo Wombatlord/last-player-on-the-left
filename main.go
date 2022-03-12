@@ -3,10 +3,13 @@ package main
 import (
 	"fmt"
 	"github.com/alexflint/go-arg"
+	"github.com/rivo/tview"
 	"github.com/wombatlord/last-player-on-the-left/src/app"
 	"github.com/wombatlord/last-player-on-the-left/src/clients"
 	"github.com/wombatlord/last-player-on-the-left/src/lastplayer"
+	"github.com/wombatlord/last-player-on-the-left/src/view"
 	"log"
+	"os"
 )
 
 var args struct {
@@ -20,11 +23,29 @@ var args struct {
 var (
 	feed   *clients.RSSFeed
 	logger chan string
-	pics   []string
+	conf   *app.ConfigFile
+	err    error
 )
 
 func playAudio(url string) {
 	lastplayer.StreamAudio("stream", url)
+}
+
+var AppControllers view.Controllers
+
+// ConfigureUI Sets up the actual content
+func ConfigureUI() *tview.Application {
+	AppControllers.FeedMenu = view.NewFeedsController()
+	app.Register(AppControllers.FeedMenu)
+
+	AppControllers.EpisodeMenu = view.NewEpisodeMenuController()
+	app.Register(AppControllers.EpisodeMenu)
+
+	return view.Build(AppControllers)
+}
+
+func mainLogger() chan string {
+	return app.GetLogChan("main")
 }
 
 func main() {
@@ -32,44 +53,32 @@ func main() {
 	logger = app.GetLogChan("main")
 	defer close(logger)
 
-	pics = []string{
-		"https://decider.com/wp-content/uploads/2016/03/feature-henry-zebrowski-the-characters.jpg",
-		"https://i0.wp.com/brightestyoungthings.com/wp-content/uploads/2018/08/Marcus.jpg",
-		"https://d2eehagpk5cl65.cloudfront.net/img/c2400x1350-w2400-q80/uploads/2017/06/14968109224555.jpg",
-	}
-
-	downloader := clients.DownloadClient{Client: clients.NewClient()}
-	reqs := downloader.CreateRequests(pics)
-
-	downloader.DownloadMulti(*downloader.Client, reqs...)
-
-	// for req := range reqs {
-	// 	downloader.DownloadEpisode(*downloader.Client, reqs[req])
-	// }
-
 	// Parse the args
 	arg.MustParse(&args)
 	logger <- fmt.Sprintf("Args parsed: %+v", args)
 
 	// Load the config file
-	conf, err := app.LoadConfig("config.yaml")
+	conf, err = app.LoadConfig("config.yaml")
 	fatal(err)
 
-	// If no episode arg is provided, set value to -1 to prevent 0 value instantiation.
-	args.Episode = -1
+	if len(os.Args) == 1 {
+		log.Fatal(ConfigureUI().Run())
+	}
 
 	// Pull the feed
 	if args.Subscription != "" {
 		feed, err = clients.GetContent(args.Subscription)
 	} else {
-		url := conf.Config.Subs[args.Alias]
-		if url == "" {
+		sub := conf.Config.GetByAlias(args.Alias)
+		if sub.Url == "" {
 			fmt.Printf("You have no subscription for the alias %s\n", args.Alias)
 		}
-		feed, err = clients.GetContent(url)
+		feed, err = clients.GetContent(sub.Url)
 	}
 	fatal(err)
 
+	// If no episode arg is provided, set value to -1 to prevent 0 value instantiation.
+	args.Episode = -1
 	// Prints data from the feed for sanity checking.
 	// feed.EpisodeData(*feed)
 
@@ -77,28 +86,6 @@ func main() {
 	if args.Subscription != "" {
 		// Handles new Subs
 		fatal(conf.Include(args.Alias, args.Subscription))
-	}
-
-	// Currently must be passed with a -l or -e to ensure player stays open while downloading.
-	// If ints are passed with -d
-	// Instantiate an array of strings: eps
-	// Iterate over the ints and grab the urls to the associated episodes
-	// Append each url to the eps array. End loop
-	// Create a grab.Request for each episode url: reqs
-	// Initiate a download for each request.
-	if len(args.Download) > 0 {
-		var eps []string
-		logger <- "-d > 0"
-		for ep := range args.Download {
-			episode := feed.Channel[0].Item[args.Download[ep]]
-			streamUrl := episode.Enclosure.Url
-			eps = append(eps, streamUrl)
-		}
-		for ep := range eps {
-			logger <- eps[ep]
-		}
-		downloads := downloader.CreateRequests(eps)
-		downloader.DownloadMulti(*downloader.Client, downloads...)
 	}
 
 	if args.Latest {

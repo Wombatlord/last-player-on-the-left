@@ -8,9 +8,24 @@ import (
 
 const DefaultConfig = "src/app/default_config.yaml"
 
+type Subscription struct {
+	Alias string `yaml:"alias"`
+	Url   string `yaml:"url"`
+}
+
 type Config struct {
-	Subs map[string]string `yaml:"subs"`
-	Logs string            `yaml:"logs"`
+	Subs []Subscription `yaml:"subs"`
+	Logs string         `yaml:"logs"`
+}
+
+func (c Config) GetByAlias(alias string) Subscription {
+	for _, sub := range c.Subs {
+		if sub.Alias == alias {
+			return sub
+		}
+	}
+
+	return Subscription{}
 }
 
 type ConfigFile struct {
@@ -18,11 +33,10 @@ type ConfigFile struct {
 	Config Config
 }
 
+var LoadedConfig Config
+
 func (s *ConfigFile) Include(alias string, url string) error {
-	if s.Config.Subs == nil {
-		s.Config.Subs = make(map[string]string)
-	}
-	s.Config.Subs[alias] = url
+	s.Config.Subs = append(s.Config.Subs, Subscription{Alias: alias, Url: url})
 	if err := s.Save(); err != nil {
 		return err
 	}
@@ -54,10 +68,11 @@ func LoadConfig(path string) (*ConfigFile, error) {
 	}
 	conf.Path = path
 	err = yaml.Unmarshal(fileContent, &confVals)
-	conf.Config = confVals
 	if err != nil {
 		return nil, err
 	}
+	conf.Config = confVals
+	LoadedConfig = confVals
 
 	return &conf, nil
 }
