@@ -35,13 +35,19 @@ var AppControllers view.Controllers
 
 // ConfigureUI Sets up the actual content
 func ConfigureUI() *tview.Application {
+	gui := tview.NewApplication()
+
 	AppControllers.FeedMenu = view.NewFeedsController()
 	app.Register(AppControllers.FeedMenu)
 
 	AppControllers.EpisodeMenu = view.NewEpisodeMenuController()
 	app.Register(AppControllers.EpisodeMenu)
 
-	return view.Build(AppControllers)
+	AppControllers.RootContoller = view.NewRootController(gui)
+	
+	application := view.Build(gui, AppControllers)
+
+	return application
 }
 
 func mainLogger() chan string {

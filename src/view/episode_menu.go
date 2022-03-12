@@ -2,18 +2,20 @@ package view
 
 import (
 	"fmt"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/wombatlord/last-player-on-the-left/src/app"
 	"github.com/wombatlord/last-player-on-the-left/src/clients"
+	"github.com/wombatlord/last-player-on-the-left/src/lastplayer"
 )
 
 type EpisodeMenuController struct {
 	BaseMenuController
-	feed      *clients.RSSFeed
-	feedIndex int
-	view      *tview.List
-	logger    chan string
+	feed         *clients.RSSFeed
+	feedIndex    int
+	view         *tview.List
+	logger       chan string
 }
 
 func NewEpisodeMenuController() *EpisodeMenuController {
@@ -57,5 +59,11 @@ func (e *EpisodeMenuController) Receive(s app.State) {
 }
 
 func (e *EpisodeMenuController) InputHandler(event *tcell.EventKey) *tcell.EventKey {
+	if event.Key() == tcell.KeyEnter {
+		episodeIndex := e.view.GetCurrentItem()
+		lastplayer.PlayFromUrl(e.feed.Channel[0].Item[episodeIndex].Enclosure.Url)
+		return nil
+	}
+
 	return event
 }

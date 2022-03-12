@@ -5,14 +5,16 @@ import (
 )
 
 type Controllers struct {
-	FeedMenu    *FeedsMenuController
-	EpisodeMenu *EpisodeMenuController
+	FeedMenu      *FeedsMenuController
+	EpisodeMenu   *EpisodeMenuController
+	RootContoller *RootContoller
 }
 
-// Build returns the tview app
-func Build(controllers Controllers) *tview.Application {
-	gui := tview.NewApplication()
-	mainFlex := MainFlex()
+// Build returns the tview app, implement any additions to
+// the user interface adding new primitives to the app hierarchy
+// in this file
+func Build(gui *tview.Application, controllers Controllers) *tview.Application {
+	mainFlex := MainFlex(controllers)
 	feedColumn := FeedColumn()
 	episodeMenu := EpisodeMenu(controllers)
 	feedMenu := FeedMenu(controllers)
@@ -25,11 +27,18 @@ func Build(controllers Controllers) *tview.Application {
 	mainFlex.AddItem(episodeMenu, -1, 1, true)
 
 	gui.SetRoot(mainFlex, true)
+
+	focusRing := []tview.Primitive{feedMenu, episodeMenu}
+	controllers.RootContoller.SetFocusRing(focusRing)
+
+
 	return gui
 }
 
-func MainFlex() *tview.Flex {
+func MainFlex(controllers Controllers) *tview.Flex {
 	mainFlex := tview.NewFlex()
+	controllers.RootContoller.Attach(mainFlex)
+
 	return mainFlex
 }
 

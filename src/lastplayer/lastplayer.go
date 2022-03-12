@@ -39,7 +39,7 @@ type audioPanel struct {
 }
 
 // newAudioPanel is a constructor function for the AudioPanel struct.
-func newAudioPanel(format beep.Format, streamer beep.StreamSeeker) *audioPanel {
+func NewAudioPanel(format beep.Format, streamer beep.StreamSeeker) *audioPanel {
 	logger <- "Building audio panel"
 	buffer := beep.NewBuffer(format)
 	ctrl := &beep.Ctrl{Streamer: beep.Loop(-1, streamer)}         // used for pausing
@@ -182,6 +182,42 @@ func (ap *audioPanel) handle(eventInstance tcell.Event) (changed, quit bool) {
 	return false, false
 }
 
+
+func PlayFromUrl(url string) {
+	var err error
+	if logger = app.GetLogChan("lastplayer"); err != nil {
+		panic(err)
+	}
+	defer close(logger)
+
+	
+	audio, err := AudioRequest(url)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	streamer, format, err := clients.StreamDecode(audio)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func(streamer *clients.ClientStreamer) {
+		err := streamer.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(streamer)
+
+	err = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ap := NewAudioPanel(format, streamer)
+
+	ap.play()
+}
+
+
 // StreamAudio is a proof of concept audio playback via tweaked Beep example code.
 // mp3.Decode requires an io.ReadCloser
 // This is provided by os.Open() for local playback
@@ -250,7 +286,7 @@ func StreamAudio(source string, audioSource string) {
 			panic(err)
 		}
 
-		ap := newAudioPanel(format, streamer)
+		ap := NewAudioPanel(format, streamer)
 
 		defer func() {
 			screen.Fini()

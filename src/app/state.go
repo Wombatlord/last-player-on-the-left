@@ -5,9 +5,9 @@ import (
 )
 
 type State struct {
-	FeedIndex    int
-	EpisodeIndex int
-	Initialised  bool
+	FeedIndex      int
+	EpisodeIndex   int
+	Initialised    bool
 }
 
 var currentState State
