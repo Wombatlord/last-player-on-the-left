@@ -41,9 +41,8 @@ func (r *RootContoller) View() *tview.Flex {
 func (r *RootContoller) Receive(s app.State) {}
 
 func (r *RootContoller) InputHandler(event *tcell.EventKey) *tcell.EventKey {
-
-	
 	r.logger <- fmt.Sprintf("%+v", r.gui.GetFocus())
+
 
 	var focusIndex int
 
