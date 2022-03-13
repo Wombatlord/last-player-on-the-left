@@ -3,13 +3,13 @@ package view
 import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
-	"github.com/wombatlord/last-player-on-the-left/src/app"
+	"github.com/wombatlord/last-player-on-the-left/src/domain"
 )
 
 // Controller is the interface for views that are expressed
 // In terms of tview.Primitive implementations
 type Controller interface {
-	app.Receiver
+	domain.Receiver
 	InputHandler(event *tcell.EventKey) *tcell.EventKey
 }
 

@@ -2,6 +2,7 @@ package view
 
 import (
 	"fmt"
+	"github.com/wombatlord/last-player-on-the-left/src/domain"
 	"unicode"
 
 	"github.com/gdamore/tcell/v2"
@@ -10,49 +11,40 @@ import (
 	"github.com/wombatlord/last-player-on-the-left/src/lastplayer"
 )
 
-type RootContoller struct {
+type RootController struct {
 	FlexController
-	logger chan string
-	view   *tview.Flex
-	gui    *tview.Application
+	logger    chan string
+	view      *tview.Flex
+	gui       *tview.Application
 	focusRing []tview.Primitive
 }
 
-func NewRootController(gui *tview.Application) *RootContoller {
-	return &RootContoller{
+func NewRootController(gui *tview.Application) *RootController {
+	return &RootController{
 		gui:    gui,
 		logger: app.GetLogChan("RootController"),
 	}
 }
 
-func (r *RootContoller) SetFocusRing(focusRing []tview.Primitive) {
+func (r *RootController) SetFocusRing(focusRing []tview.Primitive) {
 	r.focusRing = focusRing
 }
 
-func (r *RootContoller) Attach(root *tview.Flex) {
+func (r *RootController) Attach(root *tview.Flex) {
 	r.view = root
 	root.SetInputCapture(r.InputHandler)
 }
 
-func (r *RootContoller) View() *tview.Flex {
+func (r *RootController) View() *tview.Flex {
 	return r.view
 }
 
-func (r *RootContoller) Receive(s app.State) {}
+func (r *RootController) Receive(_ domain.State) {}
 
-func (r *RootContoller) InputHandler(event *tcell.EventKey) *tcell.EventKey {
-	r.logger <- fmt.Sprintf("%+v", r.gui.GetFocus())
-
-
-	var focusIndex int
+func (r *RootController) InputHandler(event *tcell.EventKey) *tcell.EventKey {
 
 	if event.Key() == tcell.KeyTab {
-		for i := 0; i < 2; i++ {
-			if r.focusRing[i] == r.gui.GetFocus() {
-				focusIndex = i
-				r.logger <- fmt.Sprintf("%+v", focusIndex)
-			}
-		}
+		focusIndex := r.focusRingIndex()
 
 		focusIndex += 1
 		focusIndex = focusIndex % len(r.focusRing)
@@ -71,10 +63,25 @@ func (r *RootContoller) InputHandler(event *tcell.EventKey) *tcell.EventKey {
 	}
 
 	if event.Key() == tcell.KeyPause || unicode.ToLower(event.Rune()) == 'p' {
-		lastplayer.FetchAudioPanel().PlayPause() 		
+		lastplayer.FetchAudioPanel().PlayPause()
 		return nil
 	}
 
 	return event
 
+}
+
+func (r *RootController) focusRingIndex() int {
+	var focusIndex int
+	for i := 0; i < 2; i++ {
+		if r.focusRing[i] == r.gui.GetFocus() {
+			focusIndex = i
+			r.logger <- fmt.Sprintf("%+v", focusIndex)
+		}
+	}
+	return focusIndex
+}
+
+func (r *RootController) focusedView() tview.Primitive {
+	return r.focusRing[r.focusRingIndex()]
 }

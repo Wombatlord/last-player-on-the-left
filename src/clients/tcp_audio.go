@@ -61,12 +61,12 @@ func (client *ClientStreamer) String() string {
 		StreamerErr:      client.Err(),
 	}
 
-	json, err := json.Marshal(info)
+	jsonData, err := json.Marshal(info)
 	if err != nil {
-		json = []byte(err.Error())
+		jsonData = []byte(err.Error())
 	}
 
-	return string(json)
+	return string(jsonData)
 }
 
 func (client *ClientStreamer) currentStreamerExhausted() bool {
@@ -113,6 +113,9 @@ func (client *ClientStreamer) Len() int {
 }
 
 func (client *ClientStreamer) Position() int {
+	if client.currentStreamer == nil {
+		return 0
+	}
 	return client.currentStreamer.Position()
 }
 

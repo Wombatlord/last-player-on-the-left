@@ -1,22 +1,29 @@
-package app
+package domain
 
 import (
 	"fmt"
+	"github.com/wombatlord/last-player-on-the-left/src/app"
+	"github.com/wombatlord/last-player-on-the-left/src/clients"
 )
 
 type State struct {
 	FeedIndex      int
+	Feed           *clients.RSSFeed
 	EpisodeIndex   int
+	PlayingEpisode *clients.Item
 	Initialised    bool
 }
 
 var currentState State
 
+// NoItem is used to indicate a "none" value for a menu index (i.e. a positive integer)
+const NoItem int = -1
+
 type Transform func(state State) State
 
 type StateManager struct {
 	next    State
-	subs    []Subscription
+	subs    []app.Subscription
 	dirty   bool
 	pending []Transform
 	logger  chan string
@@ -37,16 +44,18 @@ func Register(controller Receiver) Receiver {
 // NewManager should be called to retrieve a manager instance, once commit has been called,
 func NewManager() StateManager {
 	if !currentState.Initialised {
-		currentState.FeedIndex = 0
+		currentState.FeedIndex = NoItem
+		currentState.Feed = nil
 		currentState.EpisodeIndex = 0
+		currentState.PlayingEpisode = nil
 		currentState.Initialised = true
 	}
 	return StateManager{
 		currentState,
-		conf.Config.Subs,
+		app.LoadedConfig.Subs,
 		false,
 		[]Transform{},
-		GetLogChan("StateManager"),
+		app.GetLogChan("StateManager"),
 	}
 }
 
