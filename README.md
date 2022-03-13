@@ -1,11 +1,4 @@
-<div style="text-align: center">
-	<p style="font-size: 40px"> <b>Last Player On The Left </b></p>
-	<img alt="GitHub" src="https://img.shields.io/github/license/Wombatlord/last-player-on-the-left?logo=Github&logoColor=green">
-	<img alt="GitHub" src="https://img.shields.io/github/last-commit/Wombatlord/last-player-on-the-left?color=purple&logo=github&logoColor=purple">
-	<img alt="GitHub" src="https://img.shields.io/github/languages/top/Wombatlord/last-player-on-the-left?label=Go&logo=go">
-	<img alt="GitHub" src="https://img.shields.io/github/go-mod/go-version/Wombatlord/last-player-on-the-left?logo=go">
-</div>
-
+<p style="font-size: 40px" align="center"> <b>Last Player On The Left </b></p>
 A lightweight & terminal based podcast player written in pure Go.
 No external media player (vlc, mpv) required!
 
