@@ -5,12 +5,15 @@ import (
 )
 
 type State struct {
-	FeedIndex      int
-	EpisodeIndex   int
-	Initialised    bool
+	FeedIndex    int
+	EpisodeIndex int
+	Initialised  bool
 }
 
 var currentState State
+
+// NoItem is used to indicate a "none" value for a menu index (i.e. a positive integer)
+const NoItem int = -1
 
 type Transform func(state State) State
 
@@ -37,7 +40,7 @@ func Register(controller Receiver) Receiver {
 // NewManager should be called to retrieve a manager instance, once commit has been called,
 func NewManager() StateManager {
 	if !currentState.Initialised {
-		currentState.FeedIndex = 0
+		currentState.FeedIndex = NoItem
 		currentState.EpisodeIndex = 0
 		currentState.Initialised = true
 	}

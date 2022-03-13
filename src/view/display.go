@@ -27,11 +27,10 @@ func Build(gui *tview.Application, controllers Controllers) *tview.Application {
 	mainFlex.AddItem(topRow, -1, 4, true)
 	mainFlex.AddItem(apView, -1, 1, false)
 
-	gui.SetRoot(mainFlex, true)
-
 	focusRing := []tview.Primitive{feedMenu, episodeMenu}
 	controllers.RootController.SetFocusRing(focusRing)
 
+	gui.SetRoot(mainFlex, true)
 	return gui
 }
 

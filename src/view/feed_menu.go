@@ -26,6 +26,7 @@ func (f *FeedsMenuController) Attach(list *tview.List) {
 	for _, sub := range app.LoadedConfig.Subs {
 		list.AddItem(sub.Alias, sub.Url, 0, nil)
 	}
+	f.feedIndex = list.GetCurrentItem()
 	f.view = list
 }
 
@@ -41,7 +42,7 @@ func (f *FeedsMenuController) OnSelectionChange(
 
 func (f *FeedsMenuController) updateFeedIndex(index int) {
 	manager := app.NewManager()
-
+	f.logger <- fmt.Sprintf("Pushing feed index %d to state", index)
 	manager.QueueTransform(
 		func(state app.State) app.State {
 			state.FeedIndex = index
