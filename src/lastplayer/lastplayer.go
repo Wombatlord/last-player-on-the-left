@@ -43,12 +43,19 @@ type AudioPanel struct {
 	subscribers []PlayerStateSubscriber
 	gui         *tview.Application
 	ticker      *time.Ticker
+	Format      beep.Format
 }
 
 func (ap *AudioPanel) PlayPause() {
 	speaker.Lock()
 	ap.ctrl.Paused = !ap.ctrl.Paused
 	speaker.Unlock()
+}
+
+func (ap *AudioPanel) Duration(e clients.Enclosure) time.Duration {
+	byteCount := int(e.Length)
+	numSamples := byteCount / ap.Format.Width()
+	return ap.sampleRate.D(numSamples)
 }
 
 // FetchAudioPanel will return the already initialised panel pointer.
@@ -65,6 +72,7 @@ func (ap *AudioPanel) AttachApp(gui *tview.Application) {
 }
 
 func (ap *AudioPanel) SetStreamer(format beep.Format, streamer beep.StreamSeeker) {
+	ap.Format = format
 	ap.streamer = streamer
 	ap.sampleRate = format.SampleRate
 	ap.ctrl = &beep.Ctrl{Streamer: beep.Loop(-1, streamer)}            // used for pausing

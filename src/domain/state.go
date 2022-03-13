@@ -1,7 +1,8 @@
-package app
+package domain
 
 import (
 	"fmt"
+	"github.com/wombatlord/last-player-on-the-left/src/app"
 	"github.com/wombatlord/last-player-on-the-left/src/clients"
 )
 
@@ -22,7 +23,7 @@ type Transform func(state State) State
 
 type StateManager struct {
 	next    State
-	subs    []Subscription
+	subs    []app.Subscription
 	dirty   bool
 	pending []Transform
 	logger  chan string
@@ -51,10 +52,10 @@ func NewManager() StateManager {
 	}
 	return StateManager{
 		currentState,
-		conf.Config.Subs,
+		app.LoadedConfig.Subs,
 		false,
 		[]Transform{},
-		GetLogChan("StateManager"),
+		app.GetLogChan("StateManager"),
 	}
 }
 

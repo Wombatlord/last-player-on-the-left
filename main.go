@@ -6,6 +6,7 @@ import (
 	"github.com/rivo/tview"
 	"github.com/wombatlord/last-player-on-the-left/src/app"
 	"github.com/wombatlord/last-player-on-the-left/src/clients"
+	"github.com/wombatlord/last-player-on-the-left/src/domain"
 	"github.com/wombatlord/last-player-on-the-left/src/lastplayer"
 	"github.com/wombatlord/last-player-on-the-left/src/view"
 	"log"
@@ -32,13 +33,13 @@ func ConfigureUI() *tview.Application {
 	gui := tview.NewApplication()
 
 	AppControllers.FeedMenu = view.NewFeedsController()
-	app.Register(AppControllers.FeedMenu)
+	domain.Register(AppControllers.FeedMenu)
 
 	AppControllers.EpisodeMenu = view.NewEpisodeMenuController()
-	app.Register(AppControllers.EpisodeMenu)
+	domain.Register(AppControllers.EpisodeMenu)
 
 	AppControllers.APViewController = view.NewAPViewController()
-	app.Register(AppControllers.APViewController)
+	domain.Register(AppControllers.APViewController)
 
 	AppControllers.RootController = view.NewRootController(gui)
 

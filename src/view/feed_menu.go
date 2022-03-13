@@ -5,15 +5,19 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/wombatlord/last-player-on-the-left/src/app"
+	"github.com/wombatlord/last-player-on-the-left/src/clients"
+	"github.com/wombatlord/last-player-on-the-left/src/domain"
+	"log"
 )
 
 // FeedsMenuController manages the feeds menu, it synchronises the
 // current feed with the feed selection in the ui
 type FeedsMenuController struct {
 	BaseMenuController
-	view      *tview.List
-	feedIndex int
-	logger    chan string
+	view                  *tview.List
+	hightlightedFeedIndex int
+	feed                  *clients.RSSFeed
+	logger                chan string
 }
 
 func NewFeedsController() *FeedsMenuController {
@@ -26,7 +30,7 @@ func (f *FeedsMenuController) Attach(list *tview.List) {
 	for _, sub := range app.LoadedConfig.Subs {
 		list.AddItem(sub.Alias, sub.Url, 0, nil)
 	}
-	f.feedIndex = list.GetCurrentItem()
+	f.hightlightedFeedIndex = list.GetCurrentItem()
 	f.view = list
 }
 
@@ -36,29 +40,45 @@ func (f *FeedsMenuController) OnSelectionChange(
 	secondaryText string,
 	shortcut rune,
 ) {
-	f.feedIndex = index
-	//f.updateFeedIndex(index)
+	var err error
+	if secondaryText != "" {
+		f.hightlightedFeedIndex = index
+	}
+	if err != nil {
+		f.logger <- fmt.Sprintf("Error occurred while attempting to retrieve the feed: %s", err.Error())
+	}
+	//f.selectFeed(index)
 }
 
-func (f *FeedsMenuController) updateFeedIndex(index int) {
-	manager := app.NewManager()
-	f.logger <- fmt.Sprintf("Pushing feed index %d to state", index)
+// selectFeed updates the UI with the new feed as selected by the user
+func (f *FeedsMenuController) selectFeed() {
+	f.logger <- fmt.Sprintf("Pushing feed index %d to state", f.hightlightedFeedIndex)
+	index := f.view.GetCurrentItem()
+	var err error
+	_, url := f.view.GetItemText(index)
+	f.feed, err = clients.GetContent(url)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	manager := domain.NewManager()
 	manager.QueueTransform(
-		func(state app.State) app.State {
-			state.FeedIndex = index
+		func(state domain.State) domain.State {
+			state.FeedIndex = f.hightlightedFeedIndex
+			state.Feed = f.feed
 			return state
 		},
 	)
 	manager.Commit()
 }
 
-func (f *FeedsMenuController) Receive(s app.State) {
+func (f *FeedsMenuController) Receive(s domain.State) {
 	f.logger <- fmt.Sprintf("Received state: %+v", s)
 }
 
 func (f *FeedsMenuController) InputHandler(event *tcell.EventKey) *tcell.EventKey {
 	if event.Key() == tcell.KeyEnter {
-		f.updateFeedIndex(f.view.GetCurrentItem())
+		f.selectFeed()
 	}
 	return event
 }

@@ -2,6 +2,7 @@ package view
 
 import (
 	"fmt"
+	"github.com/wombatlord/last-player-on-the-left/src/domain"
 	"unicode"
 
 	"github.com/gdamore/tcell/v2"
@@ -38,7 +39,7 @@ func (r *RootController) View() *tview.Flex {
 	return r.view
 }
 
-func (r *RootController) Receive(_ app.State) {}
+func (r *RootController) Receive(_ domain.State) {}
 
 func (r *RootController) InputHandler(event *tcell.EventKey) *tcell.EventKey {
 	var focusIndex int
