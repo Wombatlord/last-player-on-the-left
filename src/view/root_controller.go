@@ -42,15 +42,9 @@ func (r *RootController) View() *tview.Flex {
 func (r *RootController) Receive(_ domain.State) {}
 
 func (r *RootController) InputHandler(event *tcell.EventKey) *tcell.EventKey {
-	var focusIndex int
 
 	if event.Key() == tcell.KeyTab {
-		for i := 0; i < 2; i++ {
-			if r.focusRing[i] == r.gui.GetFocus() {
-				focusIndex = i
-				r.logger <- fmt.Sprintf("%+v", focusIndex)
-			}
-		}
+		focusIndex := r.focusRingIndex()
 
 		focusIndex += 1
 		focusIndex = focusIndex % len(r.focusRing)
@@ -75,4 +69,19 @@ func (r *RootController) InputHandler(event *tcell.EventKey) *tcell.EventKey {
 
 	return event
 
+}
+
+func (r *RootController) focusRingIndex() int {
+	var focusIndex int
+	for i := 0; i < 2; i++ {
+		if r.focusRing[i] == r.gui.GetFocus() {
+			focusIndex = i
+			r.logger <- fmt.Sprintf("%+v", focusIndex)
+		}
+	}
+	return focusIndex
+}
+
+func (r *RootController) focusedView() tview.Primitive {
+	return r.focusRing[r.focusRingIndex()]
 }

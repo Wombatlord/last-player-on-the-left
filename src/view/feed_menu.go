@@ -14,14 +14,15 @@ import (
 // current feed with the feed selection in the ui
 type FeedsMenuController struct {
 	BaseMenuController
-	view                  *tview.List
-	hightlightedFeedIndex int
-	feed                  *clients.RSSFeed
-	logger                chan string
+	view                 *tview.List
+	highlightedFeedIndex int
+	feed                 *clients.RSSFeed
+	logger               chan string
+	gui                  *tview.Application
 }
 
-func NewFeedsController() *FeedsMenuController {
-	return &FeedsMenuController{logger: app.GetLogChan("FeedsMenuController")}
+func NewFeedsController(gui *tview.Application) *FeedsMenuController {
+	return &FeedsMenuController{logger: app.GetLogChan("FeedsMenuController"), gui: gui}
 }
 
 func (f *FeedsMenuController) Attach(list *tview.List) {
@@ -30,7 +31,7 @@ func (f *FeedsMenuController) Attach(list *tview.List) {
 	for _, sub := range app.LoadedConfig.Subs {
 		list.AddItem(sub.Alias, sub.Url, 0, nil)
 	}
-	f.hightlightedFeedIndex = list.GetCurrentItem()
+	f.highlightedFeedIndex = list.GetCurrentItem()
 	f.view = list
 }
 
@@ -42,7 +43,7 @@ func (f *FeedsMenuController) OnSelectionChange(
 ) {
 	var err error
 	if secondaryText != "" {
-		f.hightlightedFeedIndex = index
+		f.highlightedFeedIndex = index
 	}
 	if err != nil {
 		f.logger <- fmt.Sprintf("Error occurred while attempting to retrieve the feed: %s", err.Error())
@@ -52,7 +53,7 @@ func (f *FeedsMenuController) OnSelectionChange(
 
 // selectFeed updates the UI with the new feed as selected by the user
 func (f *FeedsMenuController) selectFeed() {
-	f.logger <- fmt.Sprintf("Pushing feed index %d to state", f.hightlightedFeedIndex)
+	f.logger <- fmt.Sprintf("Pushing feed index %d to state", f.highlightedFeedIndex)
 	index := f.view.GetCurrentItem()
 	var err error
 	_, url := f.view.GetItemText(index)
@@ -64,7 +65,7 @@ func (f *FeedsMenuController) selectFeed() {
 	manager := domain.NewManager()
 	manager.QueueTransform(
 		func(state domain.State) domain.State {
-			state.FeedIndex = f.hightlightedFeedIndex
+			state.FeedIndex = f.highlightedFeedIndex
 			state.Feed = f.feed
 			return state
 		},
@@ -79,6 +80,7 @@ func (f *FeedsMenuController) Receive(s domain.State) {
 func (f *FeedsMenuController) InputHandler(event *tcell.EventKey) *tcell.EventKey {
 	if event.Key() == tcell.KeyEnter {
 		f.selectFeed()
+		f.gui.QueueEvent(tcell.NewEventKey(tcell.KeyTab, 0, tcell.ModNone))
 	}
 	return event
 }

@@ -32,7 +32,7 @@ var AppControllers view.Controllers
 func ConfigureUI() *tview.Application {
 	gui := tview.NewApplication()
 
-	AppControllers.FeedMenu = view.NewFeedsController()
+	AppControllers.FeedMenu = view.NewFeedsController(gui)
 	domain.Register(AppControllers.FeedMenu)
 
 	AppControllers.EpisodeMenu = view.NewEpisodeMenuController()
