@@ -2,12 +2,15 @@ package app
 
 import (
 	"fmt"
+	"github.com/wombatlord/last-player-on-the-left/src/clients"
 )
 
 type State struct {
-	FeedIndex    int
-	EpisodeIndex int
-	Initialised  bool
+	FeedIndex      int
+	Feed           *clients.RSSFeed
+	EpisodeIndex   int
+	PlayingEpisode *clients.Item
+	Initialised    bool
 }
 
 var currentState State
@@ -41,7 +44,9 @@ func Register(controller Receiver) Receiver {
 func NewManager() StateManager {
 	if !currentState.Initialised {
 		currentState.FeedIndex = NoItem
+		currentState.Feed = nil
 		currentState.EpisodeIndex = 0
+		currentState.PlayingEpisode = nil
 		currentState.Initialised = true
 	}
 	return StateManager{
