@@ -48,7 +48,6 @@ func (f *FeedsMenuController) OnSelectionChange(
 	if err != nil {
 		f.logger <- fmt.Sprintf("Error occurred while attempting to retrieve the feed: %s", err.Error())
 	}
-	//f.selectFeed(index)
 }
 
 // selectFeed updates the UI with the new feed as selected by the user
