@@ -2,6 +2,7 @@ package lastplayer
 
 import (
 	"fmt"
+	"github.com/rivo/tview"
 	"io"
 	"log"
 	"net/http"
@@ -27,34 +28,48 @@ func drawTextLine(screen tcell.Screen, x, y int, s string, style tcell.Style) {
 }
 
 var (
-	panel  *AudioPanel = &AudioPanel{}
+	panel = &AudioPanel{}
 )
 
 func getLogger() chan string {
 	return app.GetLogChan("lastplayer")
 }
 
-// Contains properties for manipulating an audio stream & drawing info to the terminal. eg. volume / seeking & position
-type AudioPanel struct {
-	sampleRate beep.SampleRate
-	streamer   beep.StreamSeeker
-	ctrl       *beep.Ctrl
-	resampler  *beep.Resampler
-	volume     *effects.Volume
+// PlayerState is a snapshot of the current player state
+type PlayerState struct {
+	Position time.Duration
+	Length   time.Duration
+	Playing  bool
 }
 
-func (ap *AudioPanel) PlayPause () {
+type PlayerStateSubscriber interface {
+	OnUpdate()
+}
+
+// AudioPanel contains properties for manipulating an audio stream & drawing info to the terminal. eg. volume / seeking & position
+type AudioPanel struct {
+	sampleRate  beep.SampleRate
+	streamer    beep.StreamSeeker
+	ctrl        *beep.Ctrl
+	resampler   *beep.Resampler
+	volume      *effects.Volume
+	subscribers []PlayerStateSubscriber
+	gui         *tview.Application
+	ticker      *time.Ticker
+}
+
+func (ap *AudioPanel) PlayPause() {
 	speaker.Lock()
 	ap.ctrl.Paused = !ap.ctrl.Paused
 	speaker.Unlock()
 }
 
-// newAudioPanel is a constructor function for the AudioPanel struct.
-func NewAudioPanel(format beep.Format, streamer beep.StreamSeeker) *AudioPanel {
+// InitAudioPanel is a constructor function for the AudioPanel struct.
+func InitAudioPanel(format beep.Format, streamer beep.StreamSeeker) *AudioPanel {
 	getLogger() <- "Building audio panel"
-	ap := &AudioPanel{}
-	ap.SetStreamer(format, streamer)
-	return ap
+	panel.subscribers = []PlayerStateSubscriber{}
+	panel.SetStreamer(format, streamer)
+	return panel
 }
 
 // FetchAudioPanel will return the already initialised panel pointer.
@@ -62,10 +77,34 @@ func FetchAudioPanel() *AudioPanel {
 	return panel
 }
 
+func (ap *AudioPanel) SubscribeToState(subscriber PlayerStateSubscriber) {
+	ap.subscribers = append(ap.subscribers, subscriber)
+}
+
+func (ap *AudioPanel) AttachApp(gui *tview.Application) {
+	ap.gui = gui
+}
+
 func (ap *AudioPanel) SetStreamer(format beep.Format, streamer beep.StreamSeeker) {
+	ap.streamer = streamer
+	ap.sampleRate = format.SampleRate
 	ap.ctrl = &beep.Ctrl{Streamer: beep.Loop(-1, streamer)}            // used for pausing
 	ap.resampler = beep.ResampleRatio(4, 1, ap.ctrl)                   // can change playback speed.
 	ap.volume = &effects.Volume{Streamer: ap.ctrl, Base: 2, Volume: 0} // Volume: -0.1 to 5 tested range. 0 is system volume
+}
+
+func (ap *AudioPanel) SpawnPublisher() {
+	ap.ticker = time.NewTicker(time.Second)
+	publisher := func() {
+		for range ap.ticker.C {
+			for _, sub := range ap.subscribers {
+				ap.gui.QueueUpdateDraw(func() {
+					sub.OnUpdate()
+				})
+			}
+		}
+	}
+	go publisher()
 }
 
 func (ap *AudioPanel) PlayFromUrl(url string) {
@@ -76,7 +115,7 @@ func (ap *AudioPanel) PlayFromUrl(url string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	streamer, format, err := clients.StreamDecode(audio)
 	if err != nil {
 		log.Fatal(err)
@@ -107,6 +146,24 @@ func AudioRequest(url string) (io.ReadCloser, error) {
 func (ap *AudioPanel) play() {
 	getLogger() <- "Playing audio"
 	speaker.Play(ap.volume)
+}
+
+// GetPlayerState returns a PlayerState value that represents a snapshot of the user relevant
+// player state at the time this method was called
+func (ap *AudioPanel) GetPlayerState() PlayerState {
+	state := PlayerState{}
+	if ap.streamer != nil {
+		if ap.streamer.Position() <= 0 {
+			return state
+		}
+		speaker.Lock()
+		state.Position = ap.sampleRate.D(ap.streamer.Position())
+		state.Length = ap.sampleRate.D(ap.streamer.Len())
+		state.Playing = !ap.ctrl.Paused
+		speaker.Unlock()
+	}
+
+	return state
 }
 
 // Drawing
@@ -252,7 +309,7 @@ func StreamAudio(source string, audioSource string) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		
+
 		streamer, format, err := clients.StreamDecode(audio)
 		if err != nil {
 			log.Fatal(err)
@@ -278,7 +335,7 @@ func StreamAudio(source string, audioSource string) {
 			panic(err)
 		}
 
-		ap := NewAudioPanel(format, streamer)
+		ap := InitAudioPanel(format, streamer)
 
 		defer func() {
 			screen.Fini()

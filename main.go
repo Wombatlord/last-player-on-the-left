@@ -43,8 +43,16 @@ func ConfigureUI() *tview.Application {
 	AppControllers.EpisodeMenu = view.NewEpisodeMenuController()
 	app.Register(AppControllers.EpisodeMenu)
 
-	AppControllers.RootContoller = view.NewRootController(gui)
-	
+	AppControllers.APViewController = view.NewAPViewController()
+	app.Register(AppControllers.APViewController)
+
+	AppControllers.RootController = view.NewRootController(gui)
+
+	audioPanel := lastplayer.FetchAudioPanel()
+	audioPanel.SubscribeToState(AppControllers.APViewController)
+	audioPanel.AttachApp(gui)
+	audioPanel.SpawnPublisher()
+
 	application := view.Build(gui, AppControllers)
 
 	return application

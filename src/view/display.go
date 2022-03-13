@@ -5,9 +5,10 @@ import (
 )
 
 type Controllers struct {
-	FeedMenu      *FeedsMenuController
-	EpisodeMenu   *EpisodeMenuController
-	RootContoller *RootContoller
+	FeedMenu         *FeedsMenuController
+	EpisodeMenu      *EpisodeMenuController
+	RootController   *RootController
+	APViewController *APViewController
 }
 
 // Build returns the tview app, implement any additions to
@@ -18,9 +19,7 @@ func Build(gui *tview.Application, controllers Controllers) *tview.Application {
 	topRow := TopRow()
 	episodeMenu := EpisodeMenu(controllers)
 	feedMenu := FeedMenu(controllers)
-	apView := AudioPanelView()
-	//
-	//feedColumn.AddItem(feedMenu, -1, 5, true)
+	apView := AudioPanelView(controllers)
 
 	topRow.AddItem(feedMenu, -1, 1, true)
 	topRow.AddItem(episodeMenu, -1, 1, true)
@@ -31,14 +30,14 @@ func Build(gui *tview.Application, controllers Controllers) *tview.Application {
 	gui.SetRoot(mainFlex, true)
 
 	focusRing := []tview.Primitive{feedMenu, episodeMenu}
-	controllers.RootContoller.SetFocusRing(focusRing)
+	controllers.RootController.SetFocusRing(focusRing)
 
 	return gui
 }
 
 func MainFlex(controllers Controllers) *tview.Flex {
 	mainFlex := tview.NewFlex()
-	controllers.RootContoller.Attach(mainFlex)
+	controllers.RootController.Attach(mainFlex)
 
 	return mainFlex
 }
@@ -68,8 +67,10 @@ func FeedMenu(controllers Controllers) *tview.List {
 	return feedMenu
 }
 
-func AudioPanelView() *tview.TextView {
+func AudioPanelView(controllers Controllers) *tview.TextView {
 	view := tview.NewTextView()
+	controllers.APViewController.Attach(view)
+
 	view.SetBorder(true).
 		SetTitle("Player").
 		SetTitleAlign(tview.AlignCenter)

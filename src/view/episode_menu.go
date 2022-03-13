@@ -61,7 +61,8 @@ func (e *EpisodeMenuController) Receive(s app.State) {
 func (e *EpisodeMenuController) InputHandler(event *tcell.EventKey) *tcell.EventKey {
 	if event.Key() == tcell.KeyEnter {
 		episodeIndex := e.view.GetCurrentItem()
-		lastplayer.FetchAudioPanel().PlayFromUrl(e.feed.Channel[0].Item[episodeIndex].Enclosure.Url)
+		panel := lastplayer.FetchAudioPanel()
+		panel.PlayFromUrl(e.feed.Channel[0].Item[episodeIndex].Enclosure.Url)
 		return nil
 	}
 

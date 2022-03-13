@@ -10,40 +10,37 @@ import (
 	"github.com/wombatlord/last-player-on-the-left/src/lastplayer"
 )
 
-type RootContoller struct {
+type RootController struct {
 	FlexController
-	logger chan string
-	view   *tview.Flex
-	gui    *tview.Application
+	logger    chan string
+	view      *tview.Flex
+	gui       *tview.Application
 	focusRing []tview.Primitive
 }
 
-func NewRootController(gui *tview.Application) *RootContoller {
-	return &RootContoller{
+func NewRootController(gui *tview.Application) *RootController {
+	return &RootController{
 		gui:    gui,
 		logger: app.GetLogChan("RootController"),
 	}
 }
 
-func (r *RootContoller) SetFocusRing(focusRing []tview.Primitive) {
+func (r *RootController) SetFocusRing(focusRing []tview.Primitive) {
 	r.focusRing = focusRing
 }
 
-func (r *RootContoller) Attach(root *tview.Flex) {
+func (r *RootController) Attach(root *tview.Flex) {
 	r.view = root
 	root.SetInputCapture(r.InputHandler)
 }
 
-func (r *RootContoller) View() *tview.Flex {
+func (r *RootController) View() *tview.Flex {
 	return r.view
 }
 
-func (r *RootContoller) Receive(s app.State) {}
+func (r *RootController) Receive(_ app.State) {}
 
-func (r *RootContoller) InputHandler(event *tcell.EventKey) *tcell.EventKey {
-	r.logger <- fmt.Sprintf("%+v", r.gui.GetFocus())
-
-
+func (r *RootController) InputHandler(event *tcell.EventKey) *tcell.EventKey {
 	var focusIndex int
 
 	if event.Key() == tcell.KeyTab {
@@ -71,7 +68,7 @@ func (r *RootContoller) InputHandler(event *tcell.EventKey) *tcell.EventKey {
 	}
 
 	if event.Key() == tcell.KeyPause || unicode.ToLower(event.Rune()) == 'p' {
-		lastplayer.FetchAudioPanel().PlayPause() 		
+		lastplayer.FetchAudioPanel().PlayPause()
 		return nil
 	}
 
