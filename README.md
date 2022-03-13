@@ -10,12 +10,14 @@
 	<img alt="GitHub" src="https://img.shields.io/github/last-commit/Wombatlord/last-player-on-the-left?color=purple&logo=github&logoColor=purple">
 	<img alt="GitHub" src="https://img.shields.io/github/languages/top/Wombatlord/last-player-on-the-left?label=Go&logo=go">
 	<img alt="GitHub" src="https://img.shields.io/github/go-mod/go-version/Wombatlord/last-player-on-the-left?logo=go"></p>
-A lightweight & terminal based podcast player written in pure Go.
-No external media player (vlc, mpv) required!
+## Introduction
+Last Player On The Left is a simple, cross-platform podcast player written in Go and designed for the terminal.
 
+## Features
 - Terminal UI
 - Subscribe to RSS feeds
 - Stream episodes from subscribed feeds.
+- No dependancies on third-party players such as VLC.
 
 ## Installation
 To build from source, clone the repo and run `go build` in the project root.
