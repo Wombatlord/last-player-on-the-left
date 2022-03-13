@@ -10,6 +10,7 @@
 	<img alt="GitHub" src="https://img.shields.io/github/last-commit/Wombatlord/last-player-on-the-left?color=purple&logo=github&logoColor=purple">
 	<img alt="GitHub" src="https://img.shields.io/github/languages/top/Wombatlord/last-player-on-the-left?label=Go&logo=go">
 	<img alt="GitHub" src="https://img.shields.io/github/go-mod/go-version/Wombatlord/last-player-on-the-left?logo=go"></p>
+
 ## Introduction
 Last Player On The Left is a simple, cross-platform podcast player written in Go and designed for the terminal.
 
