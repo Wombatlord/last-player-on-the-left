@@ -1,12 +1,13 @@
-package audiopanel
+package lastplayer
 
 import (
 	"fmt"
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/effects"
 	"github.com/faiface/beep/speaker"
+	"github.com/rivo/tview"
+	"github.com/wombatlord/last-player-on-the-left/src/app"
 	"github.com/wombatlord/last-player-on-the-left/src/clients"
-	"github.com/wombatlord/last-player-on-the-left/src/view"
 	"io"
 	"log"
 	"net/http"
@@ -16,6 +17,10 @@ import (
 var (
 	panel = &AudioPanel{}
 )
+
+func getLogger() chan string {
+	return app.GetLogChan("lastplayer")
+}
 
 // PlayerState is a snapshot of the current player state
 type PlayerState struct {
@@ -36,10 +41,9 @@ type AudioPanel struct {
 	resampler   *beep.Resampler
 	volume      *effects.Volume
 	subscribers []PlayerStateSubscriber
-	lastPlayer  *view.LastPlayer
-	clock       *time.Ticker
+	gui         *tview.Application
+	ticker      *time.Ticker
 	Format      beep.Format
-	logger      *log.Logger
 }
 
 func (ap *AudioPanel) PlayPause() {
@@ -63,10 +67,8 @@ func (ap *AudioPanel) SubscribeToState(subscriber PlayerStateSubscriber) {
 	ap.subscribers = append(ap.subscribers, subscriber)
 }
 
-func (ap *AudioPanel) AttachApp(lastPlayer *view.LastPlayer) *AudioPanel {
-	ap.lastPlayer = lastPlayer
-	ap.logger = lastPlayer.GetLogger("AudioPanel")
-	return ap
+func (ap *AudioPanel) AttachApp(gui *tview.Application) {
+	ap.gui = gui
 }
 
 func (ap *AudioPanel) SetStreamer(format beep.Format, streamer beep.StreamSeeker) {
@@ -79,11 +81,11 @@ func (ap *AudioPanel) SetStreamer(format beep.Format, streamer beep.StreamSeeker
 }
 
 func (ap *AudioPanel) SpawnPublisher() {
-	ap.clock = time.NewTicker(time.Second / 2)
+	ap.ticker = time.NewTicker(time.Second)
 	publisher := func() {
-		for range ap.clock.C {
+		for range ap.ticker.C {
 			for _, sub := range ap.subscribers {
-				ap.lastPlayer.QueueUpdateDraw(func() {
+				ap.gui.QueueUpdateDraw(func() {
 					sub.OnUpdate()
 				})
 			}
@@ -94,9 +96,9 @@ func (ap *AudioPanel) SpawnPublisher() {
 
 func (ap *AudioPanel) PlayFromUrl(url string) {
 	var err error
-	ap.logger.Println("PlayFromUrl call")
+	getLogger() <- "PlayFromUrl call"
 
-	audio, err := ap.AudioRequest(url)
+	audio, err := AudioRequest(url)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -117,8 +119,8 @@ func (ap *AudioPanel) PlayFromUrl(url string) {
 // AudioRequest is the bare minimum HTTP request function to get an audio stream.
 // io.ReadCloser is the interface required by mp3.Decode in StreamAudio()
 // resp.Body is of this type so can simply be returned following the request.
-func (ap *AudioPanel) AudioRequest(url string) (io.ReadCloser, error) {
-	ap.logger.Printf("Requesting streaming audio from %s", url)
+func AudioRequest(url string) (io.ReadCloser, error) {
+	getLogger() <- fmt.Sprintf("Requesting streaming audio from %s", url)
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("GET error: %v", err)
@@ -129,7 +131,7 @@ func (ap *AudioPanel) AudioRequest(url string) (io.ReadCloser, error) {
 
 // play Plays the stream referenced by AudioPanel.streamer at the volume of AudioPanel.volume
 func (ap *AudioPanel) play() {
-	ap.logger.Println("Playing audio")
+	getLogger() <- "Playing audio"
 	speaker.Play(ap.volume)
 }
 

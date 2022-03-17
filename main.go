@@ -1,8 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"github.com/alexflint/go-arg"
+	"github.com/rivo/tview"
 	"github.com/wombatlord/last-player-on-the-left/src/app"
+	"github.com/wombatlord/last-player-on-the-left/src/clients"
+	"github.com/wombatlord/last-player-on-the-left/src/domain"
+	"github.com/wombatlord/last-player-on-the-left/src/lastplayer"
 	"github.com/wombatlord/last-player-on-the-left/src/view"
 	"log"
 	"os"
@@ -15,39 +20,76 @@ var args struct {
 }
 
 var (
-	conf *app.ConfigFile
-	err  error
+	feed   *clients.RSSFeed
+	logger chan string
+	conf   *app.ConfigFile
+	err    error
 )
 
-func main() {
-	// Load the config file
-	conf, err = app.LoadConfig()
-	fatal(err)
+var AppControllers view.Controllers
 
+// ConfigureUI Sets up the actual content
+func ConfigureUI() *tview.Application {
+	gui := tview.NewApplication()
+
+	AppControllers.FeedMenu = view.NewFeedsController(gui)
+	domain.Register(AppControllers.FeedMenu)
+
+	AppControllers.EpisodeMenu = view.NewEpisodeMenuController()
+	domain.Register(AppControllers.EpisodeMenu)
+
+	AppControllers.APViewController = view.NewAPViewController()
+	domain.Register(AppControllers.APViewController)
+
+	AppControllers.RootController = view.NewRootController(gui)
+
+	audioPanel := lastplayer.FetchAudioPanel()
+	audioPanel.SubscribeToState(AppControllers.APViewController)
+	audioPanel.AttachApp(gui)
+	audioPanel.SpawnPublisher()
+
+	application := view.Build(gui, AppControllers)
+
+	return application
+}
+
+func mainLogger() chan string {
+	return app.GetLogChan("main")
+}
+
+func main() {
 	// Create the logger
-	logfile, err := os.Open(conf.Config.Logs)
-	fatal(err)
-	logger := log.New(logfile, "main", 0)
+	logger = app.GetLogChan("main")
+	defer close(logger)
 
 	// Parse the args
 	arg.MustParse(&args)
-	logger.Printf("Args parsed: %+v", args)
+	logger <- fmt.Sprintf("Args parsed: %+v", args)
 
-	// If invoked bare, start the main app
+	// Load the config file
+	conf, err = app.LoadConfig("config.yaml")
+	fatal(err)
+
 	if len(os.Args) == 1 {
-		lastPlayer := view.Build()
-		fatal(lastPlayer.Run())
+		log.Fatal(ConfigureUI().Run())
 	}
 
-	// Add subscription if -s flag supplied
+	// Pull the feed
 	if args.Subscription != "" {
-		fatal(conf.Include(args.Alias, args.Subscription))
-		fatal(conf.Save())
+		feed, err = clients.GetContent(args.Subscription)
+	} else {
+		sub := conf.Config.GetByAlias(args.Alias)
+		if sub.Url == "" {
+			fmt.Printf("You have no subscription for the alias %s\n", args.Alias)
+		}
+		feed, err = clients.GetContent(sub.Url)
 	}
+	fatal(err)
 }
 
 func fatal(err error) {
 	if err != nil {
+		logger <- fmt.Sprintf("error: %v", err)
 		log.Fatalf("error: %v", err)
 	}
 }

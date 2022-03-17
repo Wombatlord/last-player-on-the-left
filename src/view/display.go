@@ -4,13 +4,39 @@ import (
 	"github.com/rivo/tview"
 )
 
-// This file is for convenience functions that
-// initialise the various views that make up the
-// LastPlayer. This is where to configure things
-// like the border/title etc.
+type Controllers struct {
+	FeedMenu         *FeedsMenuController
+	EpisodeMenu      *EpisodeMenuController
+	RootController   *RootController
+	APViewController *APViewController
+}
 
-func MainFlex() *tview.Flex {
-	mainFlex := tview.NewFlex().SetDirection(tview.FlexRow)
+// Build returns the tview app, implement any additions to
+// the user interface adding new primitives to the app hierarchy
+// in this file
+func Build(gui *tview.Application, controllers Controllers) *tview.Application {
+	mainFlex := MainFlex(controllers).SetDirection(tview.FlexRow)
+	topRow := TopRow()
+	episodeMenu := EpisodeMenu(controllers)
+	feedMenu := FeedMenu(controllers)
+	apView := AudioPanelView(controllers)
+
+	topRow.AddItem(feedMenu, -1, 1, true)
+	topRow.AddItem(episodeMenu, -1, 1, true)
+
+	mainFlex.AddItem(topRow, -1, 4, true)
+	mainFlex.AddItem(apView, -1, 1, false)
+
+	focusRing := []tview.Primitive{feedMenu, episodeMenu}
+	controllers.RootController.SetFocusRing(focusRing)
+
+	gui.SetRoot(mainFlex, true)
+	return gui
+}
+
+func MainFlex(controllers Controllers) *tview.Flex {
+	mainFlex := tview.NewFlex()
+	controllers.RootController.Attach(mainFlex)
 
 	return mainFlex
 }
@@ -20,8 +46,9 @@ func TopRow() *tview.Flex {
 	return topRow
 }
 
-func EpisodeMenu() *tview.List {
+func EpisodeMenu(controllers Controllers) *tview.List {
 	episodeMenuView := tview.NewList()
+	controllers.EpisodeMenu.Attach(episodeMenuView)
 
 	episodeMenuView.SetBorder(true).
 		SetTitle("Episodes").
@@ -29,8 +56,9 @@ func EpisodeMenu() *tview.List {
 	return episodeMenuView
 }
 
-func FeedMenu() *tview.List {
+func FeedMenu(controllers Controllers) *tview.List {
 	feedMenu := tview.NewList()
+	controllers.FeedMenu.Attach(feedMenu)
 
 	feedMenu.SetBorder(true).
 		SetTitle("Podcasts").
@@ -38,8 +66,9 @@ func FeedMenu() *tview.List {
 	return feedMenu
 }
 
-func AudioPanelView() *tview.TextView {
+func AudioPanelView(controllers Controllers) *tview.TextView {
 	view := tview.NewTextView()
+	controllers.APViewController.Attach(view)
 
 	view.SetBorder(true).
 		SetTitle("Player").
