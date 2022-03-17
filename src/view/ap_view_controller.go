@@ -3,35 +3,37 @@ package view
 import (
 	"fmt"
 	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
-	"github.com/wombatlord/last-player-on-the-left/src/app"
+	"github.com/wombatlord/last-player-on-the-left/src/audiopanel"
 	"github.com/wombatlord/last-player-on-the-left/src/clients"
 	"github.com/wombatlord/last-player-on-the-left/src/domain"
-	"github.com/wombatlord/last-player-on-the-left/src/lastplayer"
-	"time"
+	"log"
 )
 
+// APViewController manages the updating of the tview.TextView that shows the current
+// playing episode
 type APViewController struct {
-	TextViewController
-	lastplayer.PlayerStateSubscriber
-	view           *tview.TextView
-	logger         chan string
-	ticker         *time.Ticker
-	feed           *clients.RSSFeed
+	PanelStateAwareController
+	domain.Receiver
+	lastPlayer     *LastPlayer
+	logger         *log.Logger
 	playingEpisode *clients.Item
 }
 
-func NewAPViewController() *APViewController {
-	return &APViewController{logger: app.GetLogChan("APViewController")}
+// NewAPViewController initialises the APViewController and provides an interface
+// for dependency injection
+func NewAPViewController(lastPlayer *LastPlayer) *APViewController {
+	a := &APViewController{logger: lastPlayer.GetLogger("APViewController"), lastPlayer: lastPlayer}
+	return a
 }
 
-func (a *APViewController) Attach(textView *tview.TextView) {
-	a.view = textView
-}
-
+// OnUpdate implements the audiopanel.PlayerStateSubscriber interface
 func (a *APViewController) OnUpdate() {
-	state := lastplayer.FetchAudioPanel().GetPlayerState()
-	a.logger <- fmt.Sprintf("OnUpdate called with state %+v", state)
+	state := a.lastPlayer.AudioPanel.GetPlayerState()
+	a.RenderState(state)
+}
+
+// RenderState updates the TextView that the APViewController controls
+func (a *APViewController) RenderState(state audiopanel.PlayerState) {
 	title := ""
 	description := ""
 	if a.playingEpisode != nil {
@@ -47,19 +49,25 @@ func (a *APViewController) OnUpdate() {
 		state.Length,
 		description,
 	)
-	a.view.SetText(playerStatus)
+	a.lastPlayer.Views.APView.SetText(playerStatus)
 }
 
-func (a *APViewController) View() *tview.TextView {
-	return a.view
-}
-
+// Receive updates the internal tracking of the currently playing episode, if it has
+// changed then the view is re-rendered
 func (a *APViewController) Receive(state domain.State) {
-	a.logger <- fmt.Sprintf("Received state %+v", state)
-	a.feed = state.Feed
-	a.playingEpisode = state.PlayingEpisode
+	a.logger.Printf("Received state %+v", state)
+	if *a.playingEpisode != *state.PlayingEpisode {
+		a.playingEpisode = state.PlayingEpisode
+		a.RenderState(a.lastPlayer.AudioPanel.GetPlayerState())
+	}
 }
 
+// InputHandler is used here to rerender the view with the updated player state on capture
+// of the 'Play/Pause' control input
 func (a *APViewController) InputHandler(event *tcell.EventKey) *tcell.EventKey {
+	if PlayPause(event) {
+		a.RenderState(a.lastPlayer.AudioPanel.GetPlayerState())
+		return nil
+	}
 	return event
 }
