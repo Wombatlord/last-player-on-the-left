@@ -1,87 +1,71 @@
 package view
 
 import (
-	"fmt"
 	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
-	"github.com/wombatlord/last-player-on-the-left/src/app"
 	"github.com/wombatlord/last-player-on-the-left/src/clients"
 	"github.com/wombatlord/last-player-on-the-left/src/domain"
-	"github.com/wombatlord/last-player-on-the-left/src/lastplayer"
+	"log"
 )
 
+// EpisodeMenuController Handles input captured from and updates to be
+// displayed in the episode menu
 type EpisodeMenuController struct {
-	BaseMenuController
+	ReceiverController
 	feed           *clients.RSSFeed
 	feedIndex      int
 	playingEpisode *clients.Item
-	view           *tview.List
-	logger         chan string
+	lastPlayer     *LastPlayer
+	logger         *log.Logger
 }
 
-func NewEpisodeMenuController() *EpisodeMenuController {
-	return &EpisodeMenuController{feedIndex: domain.NoItem, logger: app.GetLogChan("EpisodeMenuController")}
+// NewEpisodeMenuController Initialises the EpisodeMenuController
+func NewEpisodeMenuController(lastPlayer *LastPlayer) *EpisodeMenuController {
+	e := &EpisodeMenuController{
+		lastPlayer: lastPlayer,
+		feedIndex:  domain.NoItem,
+		logger:     lastPlayer.GetLogger("EpisodeMenuController"),
+	}
+	lastPlayer.Views.EpisodeMenu.SetInputCapture(e.InputHandler)
+	return e
 }
 
-func (e *EpisodeMenuController) Attach(list *tview.List) {
-	list.SetChangedFunc(e.OnSelectionChange)
-	list.SetInputCapture(e.InputHandler)
-	e.view = list
-}
-
-func (e *EpisodeMenuController) OnSelectionChange(
-	index int,
-	_ string,
-	_ string,
-	_ rune,
-) {
-	e.highlightEpisode()
-}
-
-func (e *EpisodeMenuController) highlightEpisode() {
-	manager := domain.NewManager()
-	manager.QueueTransform(
-		func(state domain.State) domain.State {
-			state.EpisodeIndex = e.view.GetCurrentItem()
-			return state
-		},
-	)
-
-	manager.Commit()
-}
-
+// playEpisode retrieves the appropriate feed item and uses
+// the url in its Enclosure to pass to panel.PlayFromUrl which initiates
+// audio playback. It then queues a function to make the information about the
+// currently playing episode available to the rest of the application
+// via the global state.
 func (e *EpisodeMenuController) playEpisode() {
-	episodeIndex := e.view.GetCurrentItem()
-	e.playingEpisode = &e.feed.Channel[0].Item[episodeIndex]
+	episodeIndex := e.lastPlayer.Views.EpisodeMenu.GetCurrentItem()
+	e.playingEpisode = &e.lastPlayer.State.Feed.Channel[0].Item[episodeIndex]
 
-	panel := lastplayer.FetchAudioPanel()
+	panel := e.lastPlayer.AudioPanel
 	panel.PlayFromUrl(e.playingEpisode.Enclosure.Url)
-
-	manager := domain.NewManager()
-	manager.QueueTransform(
-		func(state domain.State) domain.State {
-			state.PlayingEpisode = e.playingEpisode
-			return state
-		},
-	)
-	manager.Commit()
+	e.lastPlayer.QueueUpdateDraw(func() {
+		e.lastPlayer.State.PlayingEpisode = e.playingEpisode
+	})
 }
 
 // Receive is looking out for changes to the feed index
-func (e *EpisodeMenuController) Receive(s domain.State) {
-	e.feed = s.Feed
-	e.logger <- fmt.Sprintf("Received state: %+v", s)
-	if e.feedIndex == domain.NoItem || e.feedIndex != s.FeedIndex {
-		e.feedIndex = s.FeedIndex
-		e.view.Clear()
+func (e *EpisodeMenuController) Receive(state domain.State) {
+	e.update(state)
+}
+
+// update sets the view state so that it us redrawn on the next
+// application draw cycle
+func (e *EpisodeMenuController) update(state domain.State) {
+	if e.feedIndex == domain.NoItem || e.feedIndex != state.FeedIndex {
+		e.logger.Printf("Feed changed to %s, redrawing menu", e.lastPlayer.Config.Subs[state.FeedIndex].Alias)
+		e.feedIndex = state.FeedIndex
+		e.lastPlayer.Views.EpisodeMenu.Clear()
 		for _, item := range e.feed.Channel[0].Item {
-			e.view.AddItem(item.Title, item.Enclosure.Url, ' ', nil)
+			e.lastPlayer.Views.EpisodeMenu.AddItem(item.Title, item.Enclosure.Url, ' ', nil)
 		}
 	}
 }
 
+// InputHandler implements the user input side of the controller interface
 func (e *EpisodeMenuController) InputHandler(event *tcell.EventKey) *tcell.EventKey {
-	if event.Key() == tcell.KeyEnter {
+	if SelectItem(event) {
 		e.playEpisode()
 		return nil
 	}
