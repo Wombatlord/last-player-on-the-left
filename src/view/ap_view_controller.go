@@ -55,9 +55,14 @@ func (a *APViewController) RenderState(state audiopanel.PlayerState) {
 // changed then the view is re-rendered
 func (a *APViewController) Receive(state domain.State) {
 	a.logger.Printf("Received state %+v", state)
-	if *a.playingEpisode != *state.PlayingEpisode {
-		a.playingEpisode = state.PlayingEpisode
-		a.RenderState(a.lastPlayer.AudioPanel.GetPlayerState())
+	if state.PlayingEpisode == nil {
+		return
+	}
+	if state.PlayingEpisode != a.playingEpisode {
+		if a.playingEpisode == nil || *a.playingEpisode != *state.PlayingEpisode {
+			a.playingEpisode = state.PlayingEpisode
+			a.RenderState(a.lastPlayer.AudioPanel.GetPlayerState())
+		}
 	}
 }
 

@@ -1,13 +1,17 @@
 package view
 
 import (
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/wombatlord/last-player-on-the-left/src/app"
 	"github.com/wombatlord/last-player-on-the-left/src/audiopanel"
+	"github.com/wombatlord/last-player-on-the-left/src/clients"
 	"github.com/wombatlord/last-player-on-the-left/src/domain"
 	"log"
 	"os"
 )
+
+type BeforeDraw func(_ tcell.Screen) bool
 
 // Views is the declaration of the full set of views that must be supplied
 // to the LastPlayer on Build
@@ -31,13 +35,15 @@ type Controllers struct {
 // LastPlayer extends the tview.Application with our custom functionality
 type LastPlayer struct {
 	*tview.Application
-	Controllers Controllers
-	Views       Views
-	FocusRing   []tview.Primitive
-	State       *domain.State
-	AudioPanel  *audiopanel.AudioPanel
-	Config      app.Config
-	LogFile     *os.File
+	Controllers   Controllers
+	Views         Views
+	FocusRing     []tview.Primitive
+	State         *domain.State
+	AudioPanel    *audiopanel.AudioPanel
+	Config        app.Config
+	LogFile       *os.File
+	logger        *log.Logger
+	previousState domain.State
 }
 
 // subscribePanelAware is used to subscribe PanelStateAwareController instances to
@@ -67,18 +73,25 @@ func (lp *LastPlayer) declareFocusRing(views ...tview.Primitive) {
 // in this function
 func Build() *LastPlayer {
 	config, _ := app.LoadConfig()
+	initialState := (&domain.State{}).Init()
 	application := &LastPlayer{
-		Application: tview.NewApplication(),
-		Config:      config.Config,
-		State:       (&domain.State{}).Init(),
+		Application:   tview.NewApplication(),
+		Config:        config.Config,
+		State:         initialState,
+		previousState: *initialState,
 	}
 	application.AudioPanel = audiopanel.
 		FetchAudioPanel().
-		AttachApp(application)
+		AttachLogger(application.GetLogger("AudioPanel"))
+	application.AudioPanel.
+		SetPublishCallback(
+			func(f func()) { application.QueueUpdateDraw(f) },
+		)
 
-	logfile, _ := os.Open(application.Config.Logs)
+	logfile, _ := os.OpenFile(application.Config.Logs, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
 	application.LogFile = logfile
 	log.SetOutput(logfile)
+	clients.InitLoggers(application.GetLogger)
 
 	application.Views = Views{
 		Root:        MainFlex(),
@@ -87,7 +100,6 @@ func Build() *LastPlayer {
 		FeedMenu:    FeedMenu(),
 		APView:      AudioPanelView(),
 	}
-	application.SetRoot(application.Views.Root, true)
 
 	application.Controllers = Controllers{
 		FeedMenu:         NewFeedsController(application),
@@ -111,13 +123,30 @@ func Build() *LastPlayer {
 	)
 
 	application.setupLayout()
+	application.SetRoot(application.Views.Root, true)
+	application.SetBeforeDrawFunc(application.notifyCheck())
 
 	return application
+}
+
+// notifyCheck compares the state before the last draw and if it
+// has changed, notify is called
+func (lp *LastPlayer) notifyCheck() BeforeDraw {
+	return func(_ tcell.Screen) bool {
+		s := *lp.State
+		if lp.previousState != s {
+			domain.Notify(s)
+		}
+		lp.previousState = s
+
+		return false
+	}
 }
 
 // Run overrides the tview.Application Run method and includes a deferred close
 // of the logfile
 func (lp *LastPlayer) Run() error {
+	lp.AudioPanel.SpawnPublisher()
 	defer func(LogFile *os.File) {
 		err := LogFile.Close()
 		if err != nil {
@@ -130,7 +159,7 @@ func (lp *LastPlayer) Run() error {
 // GetLogger can be used to get a log.Logger with the prefix as passed. This
 // can be accessed inside controllers etc.
 func (lp *LastPlayer) GetLogger(prefix string) *log.Logger {
-	return log.New(lp.LogFile, prefix, 0)
+	return log.New(lp.LogFile, "[ "+prefix+" ]: ", 0)
 }
 
 // setupLayout manages the nesting and sizes of the various views
@@ -140,20 +169,4 @@ func (lp *LastPlayer) setupLayout() {
 
 	lp.Views.Root.AddItem(lp.Views.TopRow, -1, 4, true)
 	lp.Views.Root.AddItem(lp.Views.APView, -1, 1, false)
-}
-
-// QueueUpdate overrides the tview.Application method QueueUpdate by
-// wrapping the call to the passed function in a closure that checks if
-// it updated the global state and if so, calls domain.Notify with the
-// updated state value
-func (lp *LastPlayer) QueueUpdate(f func()) *LastPlayer {
-	closure := func() {
-		oldState := *lp.State
-		f()
-		if oldState != *lp.State {
-			domain.Notify(*lp.State)
-		}
-	}
-	lp.Application.QueueUpdate(closure)
-	return lp
 }

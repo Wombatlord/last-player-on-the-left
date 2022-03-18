@@ -4,17 +4,13 @@ import (
 	"encoding/json"
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/mp3"
-	"github.com/wombatlord/last-player-on-the-left/src/app"
 	"io"
 )
-
-const TcpAudioLoggerName = "tcp_audio"
 
 // StreamDecode is replicating the interface of mp3.Decode returning a buffer instead of a reader.
 // It acts as a wrapper to asynchronously buffer the tcp audio stream.
 func StreamDecode(audio io.ReadCloser) (*ClientStreamer, beep.Format, error) {
-	logger = app.GetLogChan(TcpAudioLoggerName)
-	logger <- "Decoding TCP Audio Stream"
+	loggers[TCPALog].Print("Decoding TCP Audio Stream")
 	var (
 		streamer beep.StreamCloser
 		format   beep.Format
@@ -31,7 +27,7 @@ func StreamDecode(audio io.ReadCloser) (*ClientStreamer, beep.Format, error) {
 	go func() {
 		buff.Append(streamer)
 		clientStreamer.quit = true
-		logger <- "Buffering goroutine complete"
+		loggers[TCPALog].Print("Buffering goroutine complete")
 	}()
 
 	return clientStreamer, format, err
@@ -90,7 +86,10 @@ func (client *ClientStreamer) next() beep.StreamSeeker {
 	streamer := client.Buff.Streamer(0, client.Buff.Len())
 
 	if client.currentStreamer != nil {
-		streamer.Seek(client.currentStreamer.Position())
+		err := streamer.Seek(client.currentStreamer.Position())
+		if err != nil {
+			return streamer
+		}
 	}
 
 	return streamer

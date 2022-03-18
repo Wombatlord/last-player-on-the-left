@@ -3,17 +3,14 @@ package clients
 import (
 	"encoding/xml"
 	"fmt"
-	"github.com/wombatlord/last-player-on-the-left/src/app"
+	"io"
 	"io/ioutil"
 	"net/http"
 )
 
-const RssLoggerName = "RSS"
-
 type FeedCache map[string]*RSSFeed
 
 var (
-	logger    chan string
 	feedCache FeedCache = make(map[string]*RSSFeed)
 )
 
@@ -52,24 +49,25 @@ type Item struct {
 	Enclosure   Enclosure `xml:"enclosure"`
 }
 
-func IsFeedCached() *FeedCache {
-	return &feedCache
-}
-
 // GetContent retrieves a clients Feed via HTTP Request.
 // Parse the xml in the response into structs.
 // Exit & Print in the event of an error.
 func GetContent(url string) (*RSSFeed, error) {
-	logger = app.GetLogChan(RssLoggerName)
-	logger <- fmt.Sprintf("Retrieving RSS Feed at: %s", url)
+	loggers[RSSLog] = loggers[RSSLog]
+	loggers[RSSLog].Printf("Retrieving RSS Feed at: %s", url)
 	if feed, ok := feedCache[url]; !ok {
-		logger <- "Cache Miss"
+		loggers[RSSLog].Print("Cache Miss")
 		feed = &RSSFeed{}
 		resp, err := http.Get(url)
 		if err != nil {
 			return nil, fmt.Errorf("GET error: %v", err)
 		}
-		defer resp.Body.Close()
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				loggers[RSSLog].Fatal(err)
+			}
+		}(resp.Body)
 
 		if resp.StatusCode != http.StatusOK {
 			return nil, fmt.Errorf("status error: %v", resp.StatusCode)
@@ -82,11 +80,11 @@ func GetContent(url string) (*RSSFeed, error) {
 
 		err = xml.Unmarshal(data, feed)
 		if err != nil {
-			logger <- fmt.Sprintf("ERROR: %s", err.Error())
+			loggers[RSSLog].Printf("ERROR: %s", err.Error())
 		}
 		feedCache[url] = feed
 	} else {
-		logger <- "Cache Hit"
+		loggers[RSSLog].Print("Cache Hit")
 	}
 
 	return feedCache[url], nil
@@ -95,8 +93,7 @@ func GetContent(url string) (*RSSFeed, error) {
 // EpisodeData iterates over Item structs within the Channel struct.
 // Print some episode information to the terminal.
 func (RSSFeed *RSSFeed) EpisodeData(feed RSSFeed) {
-	logger = app.GetLogChan(RssLoggerName)
-	logger <- "Dumping episode data"
+	loggers[RSSLog].Print("Dumping episode data")
 	for _, channel := range feed.Channel {
 		for _, item := range channel.Item {
 			fmt.Println("Title: " + item.Title)
@@ -109,8 +106,7 @@ func (RSSFeed *RSSFeed) EpisodeData(feed RSSFeed) {
 
 // EpisodeLink returns the link for a single episode.
 func (RSSFeed *RSSFeed) EpisodeLink(feed RSSFeed, episodeNumber int) string {
-	logger = app.GetLogChan(RssLoggerName)
-	logger <- fmt.Sprintf("Retrieving link for episode number: %d", episodeNumber)
+	loggers[RSSLog].Printf("Retrieving link for episode number: %d", episodeNumber)
 	episode := feed.Channel[0].Item[episodeNumber].Link
 	return episode
 }

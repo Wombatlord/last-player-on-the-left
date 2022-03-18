@@ -59,7 +59,6 @@ func (r *RootController) focusRingIndex() int {
 	for i := 0; i < 2; i++ {
 		if r.lastPlayer.FocusRing[i] == r.lastPlayer.GetFocus() {
 			focusIndex = i
-			r.logger.Printf("%+v", focusIndex)
 		}
 	}
 	return focusIndex

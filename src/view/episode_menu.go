@@ -40,13 +40,14 @@ func (e *EpisodeMenuController) playEpisode() {
 
 	panel := e.lastPlayer.AudioPanel
 	panel.PlayFromUrl(e.playingEpisode.Enclosure.Url)
-	e.lastPlayer.QueueUpdateDraw(func() {
+	go e.lastPlayer.QueueUpdateDraw(func() {
 		e.lastPlayer.State.PlayingEpisode = e.playingEpisode
 	})
 }
 
 // Receive is looking out for changes to the feed index
 func (e *EpisodeMenuController) Receive(state domain.State) {
+	e.logger.Printf("Receive called with state %v", state)
 	e.update(state)
 }
 
@@ -54,10 +55,14 @@ func (e *EpisodeMenuController) Receive(state domain.State) {
 // application draw cycle
 func (e *EpisodeMenuController) update(state domain.State) {
 	if e.feedIndex == domain.NoItem || e.feedIndex != state.FeedIndex {
-		e.logger.Printf("Feed changed to %s, redrawing menu", e.lastPlayer.Config.Subs[state.FeedIndex].Alias)
+		alias := "NoItem"
+		if state.FeedIndex > domain.NoItem {
+			alias = e.lastPlayer.Config.Subs[state.FeedIndex].Alias
+		}
+		e.logger.Printf("Feed changed to %s, redrawing menu", alias)
 		e.feedIndex = state.FeedIndex
 		e.lastPlayer.Views.EpisodeMenu.Clear()
-		for _, item := range e.feed.Channel[0].Item {
+		for _, item := range e.lastPlayer.State.Feed.Channel[0].Item {
 			e.lastPlayer.Views.EpisodeMenu.AddItem(item.Title, item.Enclosure.Url, ' ', nil)
 		}
 	}

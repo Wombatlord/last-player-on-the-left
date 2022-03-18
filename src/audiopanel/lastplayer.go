@@ -6,7 +6,6 @@ import (
 	"github.com/faiface/beep/effects"
 	"github.com/faiface/beep/speaker"
 	"github.com/wombatlord/last-player-on-the-left/src/clients"
-	"github.com/wombatlord/last-player-on-the-left/src/view"
 	"io"
 	"log"
 	"net/http"
@@ -36,13 +35,16 @@ type AudioPanel struct {
 	resampler   *beep.Resampler
 	volume      *effects.Volume
 	subscribers []PlayerStateSubscriber
-	lastPlayer  *view.LastPlayer
 	clock       *time.Ticker
 	Format      beep.Format
 	logger      *log.Logger
+	callback    func(func())
 }
 
 func (ap *AudioPanel) PlayPause() {
+	if ap.ctrl == nil {
+		return
+	}
 	speaker.Lock()
 	ap.ctrl.Paused = !ap.ctrl.Paused
 	speaker.Unlock()
@@ -63,10 +65,16 @@ func (ap *AudioPanel) SubscribeToState(subscriber PlayerStateSubscriber) {
 	ap.subscribers = append(ap.subscribers, subscriber)
 }
 
-func (ap *AudioPanel) AttachApp(lastPlayer *view.LastPlayer) *AudioPanel {
-	ap.lastPlayer = lastPlayer
-	ap.logger = lastPlayer.GetLogger("AudioPanel")
+// AttachLogger implements setter injection of a log.Logger
+func (ap *AudioPanel) AttachLogger(logger *log.Logger) *AudioPanel {
+	ap.logger = logger
 	return ap
+}
+
+// SetPublishCallback is where the function to update on publish should be supplied
+// Probably don't pass anything other than QueueUpdateDraw
+func (ap *AudioPanel) SetPublishCallback(callback func(func())) {
+	ap.callback = callback
 }
 
 func (ap *AudioPanel) SetStreamer(format beep.Format, streamer beep.StreamSeeker) {
@@ -83,7 +91,7 @@ func (ap *AudioPanel) SpawnPublisher() {
 	publisher := func() {
 		for range ap.clock.C {
 			for _, sub := range ap.subscribers {
-				ap.lastPlayer.QueueUpdateDraw(func() {
+				ap.callback(func() {
 					sub.OnUpdate()
 				})
 			}

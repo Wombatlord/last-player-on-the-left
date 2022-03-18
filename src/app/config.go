@@ -108,7 +108,7 @@ func GetPath() string {
 		if err != nil {
 			log.Fatal(err)
 		}
-		return confDir
+		return confDir + "/last_player/config.yaml"
 	}
 	return path
 }

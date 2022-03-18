@@ -3,22 +3,15 @@ package clients
 import (
 	"fmt"
 	"github.com/cavaliergopher/grab/v3"
-	"github.com/wombatlord/last-player-on-the-left/src/app"
 	"os"
 	"time"
 )
-
-const DownloaderLoggerName = "Downloader"
-
-var dlLogger chan string
 
 type DownloadClient struct {
 	Client *grab.Client
 }
 
 func NewClient() *grab.Client {
-	dlLogger = app.GetLogChan(DownloaderLoggerName)
-
 	// create a client
 	client := grab.NewClient()
 
@@ -29,13 +22,12 @@ func NewClient() *grab.Client {
 }
 
 func (c *DownloadClient) CreateRequests(urls []string) (reqs []*grab.Request) {
-	dlLogger = app.GetLogChan(DownloaderLoggerName)
-	dlLogger <- "Creating requests!"
+	loggers[DLLog].Print("Creating requests!")
 
 	for _, url := range urls {
 		req, err := grab.NewRequest(".", url)
 		if err != nil {
-			dlLogger <- fmt.Sprintf("request error:\n%v\n%v", req, err)
+			loggers[DLLog].Printf("request error:\n%v\n%v", req, err)
 		}
 		reqs = append(reqs, req)
 	}
@@ -84,15 +76,14 @@ Loop:
 }
 
 func (c *DownloadClient) DownloadMulti(client grab.Client, requests ...*grab.Request) {
-	dlLogger = app.GetLogChan(DownloaderLoggerName)
 	responses := c.Client.DoBatch(-1, requests...)
-	
+
 	go func() {
 		for elem := range responses {
-			dlLogger <- elem.HTTPResponse.Request.Host
-			dlLogger <- elem.Request.HTTPRequest.UserAgent()
-			dlLogger <- elem.Filename
-			dlLogger <- elem.HTTPResponse.Status
+			loggers[DLLog].Print(elem.HTTPResponse.Request.Host)
+			loggers[DLLog].Print(elem.Request.HTTPRequest.UserAgent())
+			loggers[DLLog].Print(elem.Filename)
+			loggers[DLLog].Print(elem.HTTPResponse.Status)
 		}
 	}()
 

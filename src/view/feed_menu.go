@@ -36,8 +36,9 @@ func (f *FeedsMenuController) selectFeed() {
 		f.lastPlayer.Views.FeedMenu.GetCurrentItem(),
 	)
 
-	f.lastPlayer.QueueUpdateDraw(func() {
+	go f.lastPlayer.QueueUpdateDraw(func() {
 		f.lastPlayer.State.Feed = f.getFeed()
+		f.lastPlayer.State.FeedIndex = f.lastPlayer.Views.FeedMenu.GetCurrentItem()
 	})
 }
 
