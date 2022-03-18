@@ -4,6 +4,7 @@ import (
 	"gopkg.in/yaml.v2"
 	"log"
 	"os"
+	"path/filepath"
 )
 
 // Subscription represents a single alias <-> url pair. These are the items that show up
@@ -108,7 +109,7 @@ func GetPath() string {
 		if err != nil {
 			log.Fatal(err)
 		}
-		return confDir + "/last_player/config.yaml"
+		return confDir + filepath.FromSlash("/last_player/config.yaml")
 	}
 	return path
 }
