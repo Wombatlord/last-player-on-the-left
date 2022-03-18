@@ -22,7 +22,7 @@ func StreamDecode(audio io.ReadCloser) (*ClientStreamer, beep.Format, error) {
 	}
 	buff := beep.NewBuffer(format)
 
-	clientStreamer := &ClientStreamer{Buff: buff, inputStreamer: streamer, quit: false}
+	clientStreamer := &ClientStreamer{Buff: buff, inputStreamer: &streamer, quit: false}
 
 	go func() {
 		buff.Append(streamer)
@@ -35,7 +35,7 @@ func StreamDecode(audio io.ReadCloser) (*ClientStreamer, beep.Format, error) {
 
 type ClientStreamer struct {
 	Buff            *beep.Buffer
-	inputStreamer   beep.StreamCloser
+	inputStreamer   *beep.StreamCloser
 	quit            bool
 	currentStreamer beep.StreamSeeker
 }
@@ -96,7 +96,7 @@ func (client *ClientStreamer) next() beep.StreamSeeker {
 }
 
 func (client *ClientStreamer) Close() error {
-	return client.inputStreamer.Close()
+	return (*client.inputStreamer).Close()
 }
 
 func (client *ClientStreamer) Err() error {

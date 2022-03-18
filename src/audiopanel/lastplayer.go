@@ -100,7 +100,7 @@ func (ap *AudioPanel) SpawnPublisher() {
 	go publisher()
 }
 
-func (ap *AudioPanel) PlayFromUrl(url string) {
+func (ap *AudioPanel) NoBufferPlayFromUrl(url string) {
 	var err error
 	ap.logger.Println("PlayFromUrl call")
 
@@ -115,6 +115,19 @@ func (ap *AudioPanel) PlayFromUrl(url string) {
 	}
 	ap.SetStreamer(format, streamer)
 
+	err = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
+	if err != nil {
+		log.Fatal(err)
+	}
+	ap.play()
+}
+
+func (ap *AudioPanel) PlayFromUrl(url string) {
+	var err error
+
+	streamer, format := clients.NewChunkBufferStreamer(url)
+	ap.SetStreamer(format, streamer)
+	
 	err = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 	if err != nil {
 		log.Fatal(err)
