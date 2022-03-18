@@ -1,87 +1,70 @@
 package view
 
 import (
-	"fmt"
-	"github.com/wombatlord/last-player-on-the-left/src/domain"
-	"unicode"
-
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
-	"github.com/wombatlord/last-player-on-the-left/src/app"
-	"github.com/wombatlord/last-player-on-the-left/src/lastplayer"
+	"github.com/wombatlord/last-player-on-the-left/src/audiopanel"
+	"log"
 )
 
+// RootController handles global controls
 type RootController struct {
-	FlexController
-	logger    chan string
-	view      *tview.Flex
-	gui       *tview.Application
-	focusRing []tview.Primitive
+	Controller
+	logger     *log.Logger
+	lastPlayer *LastPlayer
 }
 
-func NewRootController(gui *tview.Application) *RootController {
-	return &RootController{
-		gui:    gui,
-		logger: app.GetLogChan("RootController"),
+// NewRootController initialises the RootController
+func NewRootController(lastPlayer *LastPlayer) *RootController {
+	r := &RootController{
+		lastPlayer: lastPlayer,
+		logger:     lastPlayer.GetLogger("RootController"),
 	}
+	r.lastPlayer.Views.Root.SetInputCapture(r.InputHandler)
+	return r
 }
 
-func (r *RootController) SetFocusRing(focusRing []tview.Primitive) {
-	r.focusRing = focusRing
-}
-
-func (r *RootController) Attach(root *tview.Flex) {
-	r.view = root
-	root.SetInputCapture(r.InputHandler)
-}
-
-func (r *RootController) View() *tview.Flex {
-	return r.view
-}
-
-func (r *RootController) Receive(_ domain.State) {}
-
+// InputHandler implements the global controls. In some cases the events need to propagate
+// through the hierarchy
 func (r *RootController) InputHandler(event *tcell.EventKey) *tcell.EventKey {
-
-	if event.Key() == tcell.KeyTab {
-		focusIndex := r.focusRingIndex()
-
-		focusIndex += 1
-		focusIndex = focusIndex % len(r.focusRing)
-		r.gui.SetFocus(r.focusRing[focusIndex])
+	if CycleFocus(event) {
+		focusIndex := (r.focusRingIndex() + 1) % len(r.lastPlayer.FocusRing)
+		r.lastPlayer.SetFocus(r.lastPlayer.FocusRing[focusIndex])
 		return nil
 	}
 
-	if event.Key() == tcell.KeyRight {
-		r.gui.SetFocus(r.focusRing[1])
+	if FocusRight(event) {
+		r.lastPlayer.SetFocus(r.lastPlayer.FocusRing[1])
 		return nil
 	}
 
-	if event.Key() == tcell.KeyLeft {
-		r.gui.SetFocus(r.focusRing[0])
+	if FocusLeft(event) {
+		r.lastPlayer.SetFocus(r.lastPlayer.FocusRing[0])
 		return nil
 	}
 
-	if event.Key() == tcell.KeyPause || unicode.ToLower(event.Rune()) == 'p' {
-		lastplayer.FetchAudioPanel().PlayPause()
-		return nil
+	if PlayPause(event) {
+		audiopanel.FetchAudioPanel().PlayPause()
+		return event
 	}
 
 	return event
 
 }
 
+// focusRingIndex returns the index of the currently focussed view relative to the
+// LastPlayer.FocusRing
 func (r *RootController) focusRingIndex() int {
 	var focusIndex int
 	for i := 0; i < 2; i++ {
-		if r.focusRing[i] == r.gui.GetFocus() {
+		if r.lastPlayer.FocusRing[i] == r.lastPlayer.GetFocus() {
 			focusIndex = i
-			r.logger <- fmt.Sprintf("%+v", focusIndex)
 		}
 	}
 	return focusIndex
 }
 
+// focusedView returns the currently focussed view
 func (r *RootController) focusedView() tview.Primitive {
-	return r.focusRing[r.focusRingIndex()]
+	return r.lastPlayer.FocusRing[r.focusRingIndex()]
 }

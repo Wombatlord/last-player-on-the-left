@@ -4,3 +4,4 @@ samples/
 config.yaml
 logs/log.txt
 demos/
+scratch.go
