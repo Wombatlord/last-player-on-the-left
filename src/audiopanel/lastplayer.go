@@ -125,9 +125,9 @@ func (ap *AudioPanel) NoBufferPlayFromUrl(url string) {
 func (ap *AudioPanel) PlayFromUrl(url string) {
 	var err error
 
-	streamer, format := clients.NewChunkBufferStreamer(url)
+	streamer, format := clients.TcpDiskBufferedStreamer(url)
 	ap.SetStreamer(format, streamer)
-	
+
 	err = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 	if err != nil {
 		log.Fatal(err)

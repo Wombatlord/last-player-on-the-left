@@ -5,3 +5,5 @@ config.yaml
 logs/log.txt
 demos/
 scratch.go
+sample.mp3
+/cache/
