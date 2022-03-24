@@ -146,7 +146,7 @@ func (d *Decoder) Close() error {
 
 // TcpDiskBufferedStreamer is basically a proxy to some hacked together beep source code, all credit to them, unless
 // the code looks a bit messy, that's probably us.
-func TcpDiskBufferedStreamer(url string, logger *log.Logger) (streamer *Decoder, format beep.Format) {
+func TcpDiskBufferedStreamer(url string, logger *log.Logger, cachePath string) (streamer *Decoder, format beep.Format) {
 	logger.Printf("Attempting to set up streaming audio")
 
 	var (
@@ -154,7 +154,7 @@ func TcpDiskBufferedStreamer(url string, logger *log.Logger) (streamer *Decoder,
 		started chan *SizedResult
 	)
 
-	fileName := filepath.FromSlash("./cache/" + url2FileName(url, logger))
+	fileName := filepath.FromSlash(cachePath + url2FileName(url, logger))
 
 	if fileInfo, err := os.Stat(fileName); err != nil || fileInfo.Size() == 0 {
 		logger.Printf("starting download")

@@ -39,7 +39,7 @@ func (e *EpisodeMenuController) playEpisode() {
 	e.playingEpisode = &e.lastPlayer.State.Feed.Channel[0].Item[episodeIndex]
 
 	panel := e.lastPlayer.AudioPanel
-	panel.PlayFromUrl(e.playingEpisode.Enclosure.Url, e.lastPlayer.GetLogger("Current Streamer"))
+	panel.PlayFromUrl(e.playingEpisode.Enclosure.Url, e.lastPlayer.GetLogger("Current Streamer"), e.lastPlayer.Config.Cache)
 	go e.lastPlayer.QueueUpdateDraw(func() {
 		e.lastPlayer.State.PlayingEpisode = e.playingEpisode
 	})

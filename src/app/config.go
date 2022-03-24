@@ -17,8 +17,9 @@ type Subscription struct {
 // Config represents all the configuration contained in a config file. It
 // specifies the config schema.
 type Config struct {
-	Subs []Subscription `yaml:"subs"`
-	Logs string         `yaml:"logs"`
+	Subs  []Subscription `yaml:"subs"`
+	Logs  string         `yaml:"logs"`
+	Cache string         `yaml:"cache"`
 }
 
 // GetByAlias returns the Subscription associated to the passed alias
@@ -45,8 +46,9 @@ var LoadedConfig Config
 var DefaultConfig = ConfigFile{
 	Path: GetPath(),
 	Config: Config{
-		Subs: []Subscription{},
-		Logs: "logs/log.txt",
+		Subs:  []Subscription{},
+		Logs:  "logs/log.txt",
+		Cache: "cache",
 	},
 }
 
