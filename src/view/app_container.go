@@ -7,6 +7,7 @@ import (
 	"github.com/wombatlord/last-player-on-the-left/src/audiopanel"
 	"github.com/wombatlord/last-player-on-the-left/src/clients"
 	"github.com/wombatlord/last-player-on-the-left/src/domain"
+	"io/fs"
 	"log"
 	"os"
 )
@@ -146,12 +147,15 @@ func (lp *LastPlayer) notifyCheck() BeforeDraw {
 // Run overrides the tview.Application Run method and includes a deferred close
 // of the logfile
 func (lp *LastPlayer) Run() error {
+	_ = os.MkdirAll(lp.Config.Cache, fs.ModeDir+fs.FileMode(0774))
 	lp.AudioPanel.SpawnPublisher()
 	defer func(LogFile *os.File) {
 		err := LogFile.Close()
 		if err != nil {
 			log.Fatal(err)
 		}
+		_ = os.RemoveAll(lp.Config.Cache)
+		_ = os.MkdirAll(lp.Config.Cache, fs.ModeDir+fs.FileMode(0774))
 	}(lp.LogFile)
 	return lp.Application.Run()
 }

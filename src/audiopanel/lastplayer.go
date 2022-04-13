@@ -30,7 +30,7 @@ type PlayerStateSubscriber interface {
 // AudioPanel contains properties for manipulating an audio stream & drawing info to the terminal. eg. volume / seeking & position
 type AudioPanel struct {
 	sampleRate  beep.SampleRate
-	streamer    beep.StreamSeeker
+	streamer    beep.StreamSeekCloser
 	ctrl        *beep.Ctrl
 	resampler   *beep.Resampler
 	volume      *effects.Volume
@@ -77,7 +77,13 @@ func (ap *AudioPanel) SetPublishCallback(callback func(func())) {
 	ap.callback = callback
 }
 
-func (ap *AudioPanel) SetStreamer(format beep.Format, streamer beep.StreamSeeker) {
+func (ap *AudioPanel) SetStreamer(format beep.Format, streamer beep.StreamSeekCloser) {
+	speaker.Clear()
+	speaker.Lock()
+	if ap.streamer != nil {
+		_ = ap.streamer.Close()
+	}
+	speaker.Unlock()
 	ap.Format = format
 	ap.streamer = streamer
 	ap.sampleRate = format.SampleRate
@@ -100,7 +106,7 @@ func (ap *AudioPanel) SpawnPublisher() {
 	go publisher()
 }
 
-func (ap *AudioPanel) PlayFromUrl(url string) {
+func (ap *AudioPanel) NoBufferPlayFromUrl(url string) {
 	var err error
 	ap.logger.Println("PlayFromUrl call")
 
@@ -113,6 +119,19 @@ func (ap *AudioPanel) PlayFromUrl(url string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	ap.SetStreamer(format, streamer)
+
+	err = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
+	if err != nil {
+		log.Fatal(err)
+	}
+	ap.play()
+}
+
+func (ap *AudioPanel) PlayFromUrl(url string, logger *log.Logger, cachePath string) {
+	var err error
+
+	streamer, format := clients.TcpDiskBufferedStreamer(url, logger, cachePath)
 	ap.SetStreamer(format, streamer)
 
 	err = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))

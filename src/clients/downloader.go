@@ -11,14 +11,14 @@ type DownloadClient struct {
 	Client *grab.Client
 }
 
-func NewClient() *grab.Client {
+func NewClient() *DownloadClient {
 	// create a client
 	client := grab.NewClient()
 
 	// set the User Agent header
 	client.UserAgent = "Last Player On The Left"
 
-	return client
+	return &DownloadClient{Client: client}
 }
 
 func (c *DownloadClient) CreateRequests(urls []string) (reqs []*grab.Request) {
@@ -35,7 +35,7 @@ func (c *DownloadClient) CreateRequests(urls []string) (reqs []*grab.Request) {
 	return reqs
 }
 
-func (c *DownloadClient) DownloadEpisode(client grab.Client, req *grab.Request) {
+func (c *DownloadClient) DownloadEpisode(req *grab.Request) {
 	fmt.Printf("Downloading %v... \n", req.URL())
 	resp := c.Client.Do(req)
 	fmt.Printf("  %v\n", resp.HTTPResponse.Status)
@@ -75,7 +75,8 @@ Loop:
 	// Download saved to ./gobook.pdf
 }
 
-func (c *DownloadClient) DownloadMulti(client grab.Client, requests ...*grab.Request) {
+func (c *DownloadClient) DownloadMulti(urls ...string) {
+	requests := c.CreateRequests(urls)
 	responses := c.Client.DoBatch(-1, requests...)
 
 	go func() {
